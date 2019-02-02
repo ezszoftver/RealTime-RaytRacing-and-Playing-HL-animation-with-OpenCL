@@ -116,9 +116,10 @@ namespace Project
                         triangles.Add(newTriangle);
                     }
                 }
-            
-                List<OpenCLRenderer.BVHNode> bvhObject = OpenCLRenderer.BVH.Create(triangles);
-                m_Scene.Add(bvhObject);
+
+                m_Scene.CreateStaticObject(triangles, mat4.Identity);
+                m_Scene.CreateDynamicObject(triangles, iMatrixId);
+                m_Scene.CreateAnimatedObject(triangles);
             });
             
             m_Scene.Commit();

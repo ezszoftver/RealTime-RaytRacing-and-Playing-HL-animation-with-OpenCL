@@ -16,7 +16,7 @@ namespace OpenCLRenderer
         public vec3 m_V;
         public vec3 m_N;
         public vec2 m_TC;
-        public Int32 m_iNumMatrices;
+        public byte m_iNumMatrices;
         public Int32 m_iMatrixId1;
         public Int32 m_iMatrixId2;
         public Int32 m_iMatrixId3;
@@ -47,8 +47,146 @@ namespace OpenCLRenderer
         public Int32 m_iRight;
     }
 
-    static class BVH
+    struct Material
     {
+        public IMem m_clDiffuse;
+        public IMem m_clSpecular;
+        public IMem m_clNormal;
+    }
+
+    struct Matrix
+    {
+        public mat4 m_mMatrix;
+        public Int32 m_iParentId;
+    }
+
+    struct BVHObject
+    {
+        public Int32 iOffset;
+        public Int32 iCount;
+        public byte iType;
+
+        public Int32 iIsRefitTree;
+    }
+
+    class Scene
+    {
+        public Scene()
+        {
+            ErrorCode error;
+
+            Platform[] platforms = Cl.GetPlatformIDs(out error);
+            if (error != ErrorCode.Success)
+            {
+                throw new Exception("Cl.GetPlatformIDs");
+            }
+
+            foreach (Platform platform in platforms)
+            {
+                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu, out error))
+                {
+                    if (error != ErrorCode.Success) { continue; }
+                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
+
+                    m_Context = Cl.CreateContext(null, 1, new Device[] { device }, null, IntPtr.Zero, out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateContext");
+                    }
+
+                    return;
+                }
+            }
+
+            throw new Exception("Scene: Not find OpenCL GPU device!");
+        }
+
+        // Matrix
+        public Int32 GenMatrix()
+        {
+            m_mtxMutex.WaitOne();
+            Int32 iId = m_listMatrices.Count;
+
+            Matrix newMatrix = new Matrix();
+
+            m_listMatrices.Add(newMatrix);
+            m_mtxMutex.ReleaseMutex();
+            return iId;
+        }
+        public void SetMatrix(Int32 iId, mat4 mMatrix, Int32 iParentId = -1)
+        {
+            m_mtxMutex.WaitOne();
+            Matrix newMatrix = new Matrix();
+
+            newMatrix.m_mMatrix = mMatrix;
+            newMatrix.m_iParentId = iParentId;
+
+            m_listMatrices[iId] = newMatrix;
+            m_mtxMutex.ReleaseMutex();
+        }
+
+        // Material
+        public Int32 GenMaterial()
+        {
+            m_mtxMutex.WaitOne();
+            Int32 iId = m_listMaterials.Count;
+
+            Material newMaterial = new Material();
+
+            m_listMaterials.Add(newMaterial);
+            m_mtxMutex.ReleaseMutex();
+            return iId;
+        }
+        public void SetMaterial(Int32 iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
+        {
+            m_mtxMutex.WaitOne();
+            Material newMaterial = new Material();
+
+            newMaterial.m_clDiffuse  = CreateOpenCLTextureFromFile(@strDiffuseFileName);
+            newMaterial.m_clSpecular = CreateOpenCLTextureFromFile(@strSpecularFileName);
+            newMaterial.m_clNormal   = CreateOpenCLTextureFromFile(@strNormalFileName);
+
+            m_listMaterials[iId] = newMaterial;
+            m_mtxMutex.ReleaseMutex();
+        }
+        IMem CreateOpenCLTextureFromFile(string @strFileName)
+        {
+            ErrorCode error;
+
+            Bitmap bitmap = new Bitmap(@strFileName);
+            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+            Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            OpenCL.Net.ImageFormat format = new OpenCL.Net.ImageFormat(ChannelOrder.RGBA, ChannelType.Unorm_Int8);
+            IMem clTexture = Cl.CreateImage2D(m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, format, new IntPtr(bitmap.Width), new IntPtr(bitmap.Height), new IntPtr(0), bitmapData.Scan0, out error);
+
+            if (error != ErrorCode.Success)
+            {
+                throw new Exception("Cl.CreateImage2D: " + strFileName);
+            }
+
+            bitmap.Dispose();
+            bitmap = null;
+
+            return clTexture;
+        }
+
+        //// BVH to World
+        //public Int32 Add(List<BVHNode> newBVH)
+        //{
+        //    m_mtxMutex.WaitOne();
+        //    Int32 iId = m_listObjects.Count;
+        //
+        //    BVHObject newObject = new BVHObject();
+        //    newObject.iOffset = m_listBVHNodes.Count;
+        //    newObject.iCount = newBVH.Count;
+        //    m_listObjects.Add(newObject);
+        //    RefitTree(iId, true);
+        //
+        //    m_listBVHNodes.AddRange(newBVH);
+        //    m_mtxMutex.ReleaseMutex();
+        //    return iId;
+        //}
         static float GetDistance_Triangle_Triangle(Triangle tri1, Triangle tri2)
         {
             float fMinDistance = float.MaxValue;
@@ -194,7 +332,169 @@ namespace OpenCLRenderer
             return bbox;
         }
 
-        public static List<BVHNode> Create(List<Triangle> triangles0)
+        public Int32 CreateStaticObject(List<Triangle> triangles, mat4 matTransform)
+        {
+            List<Triangle> newTriangles = new List<Triangle>();
+
+            foreach (Triangle oldTri in triangles)
+            {
+                Triangle newTri = new Triangle();
+
+                Vertex vertexA = new Vertex();
+                vertexA.m_V = new vec3(matTransform * new vec4(oldTri.m_A.m_V, 1.0f));
+                vertexA.m_N = new vec3(matTransform * new vec4(oldTri.m_A.m_N, 0.0f));
+                vertexA.m_TC = new vec2(oldTri.m_A.m_TC);
+                vertexA.m_iNumMatrices = 0;
+                vertexA.m_iMatrixId1 = -1;
+                vertexA.m_fWeight1 = 0.0f;
+                vertexA.m_iMatrixId2 = -1;
+                vertexA.m_fWeight2 = 0.0f;
+                vertexA.m_iMatrixId3 = -1;
+                vertexA.m_fWeight3 = 0.0f;
+
+                Vertex vertexB = new Vertex();
+                vertexB.m_V = new vec3(matTransform * new vec4(oldTri.m_B.m_V, 1.0f));
+                vertexB.m_N = new vec3(matTransform * new vec4(oldTri.m_B.m_N, 0.0f));
+                vertexB.m_TC = new vec2(oldTri.m_B.m_TC);
+                vertexB.m_iNumMatrices = 0;
+                vertexB.m_iMatrixId1 = -1;
+                vertexB.m_fWeight1 = 0.0f;
+                vertexB.m_iMatrixId2 = -1;
+                vertexB.m_fWeight2 = 0.0f;
+                vertexB.m_iMatrixId3 = -1;
+                vertexB.m_fWeight3 = 0.0f;
+
+                Vertex vertexC = new Vertex();
+                vertexC.m_V = new vec3(matTransform * new vec4(oldTri.m_C.m_V, 1.0f));
+                vertexC.m_N = new vec3(matTransform * new vec4(oldTri.m_C.m_N, 0.0f));
+                vertexC.m_TC = new vec2(oldTri.m_C.m_TC);
+                vertexC.m_iNumMatrices = 0;
+                vertexC.m_iMatrixId1 = -1;
+                vertexC.m_fWeight1 = 0.0f;
+                vertexC.m_iMatrixId2 = -1;
+                vertexC.m_fWeight2 = 0.0f;
+                vertexC.m_iMatrixId3 = -1;
+                vertexC.m_fWeight3 = 0.0f;
+
+                newTri.m_A = vertexA;
+                newTri.m_B = vertexB;
+                newTri.m_C = vertexC;
+                newTri.m_iMaterialId = oldTri.m_iMaterialId;
+
+                newTriangles.Add(newTri);
+            }
+
+            List<BVHNode> newBVH = CreateBVH(newTriangles);
+            newTriangles.Clear();
+
+            m_mtxMutex.WaitOne();
+            Int32 iId = m_listObjects.Count;
+            
+            BVHObject newObject = new BVHObject();
+            newObject.iOffset = m_listBVHNodes.Count;
+            newObject.iCount = newBVH.Count;
+            newObject.iType = (byte)BVHObjectType.Static;
+            m_listObjects.Add(newObject);
+            RefitTree(iId, false);
+            
+            m_listBVHNodes.AddRange(newBVH);
+            m_mtxMutex.ReleaseMutex();
+
+            return iId;
+        }
+
+        public Int32 CreateDynamicObject(List<Triangle> triangles, Int32 iMatrixId)
+        {
+            List<Triangle> newTriangles = new List<Triangle>();
+
+            foreach (Triangle oldTri in triangles)
+            {
+                Triangle newTri = new Triangle();
+
+                Vertex vertexA = new Vertex();
+                vertexA.m_V = new vec3(oldTri.m_A.m_V);
+                vertexA.m_N = new vec3(oldTri.m_A.m_N);
+                vertexA.m_TC = new vec2(oldTri.m_A.m_TC);
+                vertexA.m_iNumMatrices = 1;
+                vertexA.m_iMatrixId1 = iMatrixId;
+                vertexA.m_fWeight1 = 1.0f;
+                vertexA.m_iMatrixId2 = -1;
+                vertexA.m_fWeight2 = 0.0f;
+                vertexA.m_iMatrixId3 = -1;
+                vertexA.m_fWeight3 = 0.0f;
+
+                Vertex vertexB = new Vertex();
+                vertexB.m_V = new vec3(oldTri.m_B.m_V);
+                vertexB.m_N = new vec3(oldTri.m_B.m_N);
+                vertexB.m_TC = new vec2(oldTri.m_B.m_TC);
+                vertexB.m_iNumMatrices = 1;
+                vertexB.m_iMatrixId1 = iMatrixId;
+                vertexB.m_fWeight1 = 1.0f;
+                vertexB.m_iMatrixId2 = -1;
+                vertexB.m_fWeight2 = 0.0f;
+                vertexB.m_iMatrixId3 = -1;
+                vertexB.m_fWeight3 = 0.0f;
+
+                Vertex vertexC = new Vertex();
+                vertexC.m_V = new vec3(oldTri.m_C.m_V);
+                vertexC.m_N = new vec3(oldTri.m_C.m_N);
+                vertexC.m_TC = new vec2(oldTri.m_C.m_TC);
+                vertexC.m_iNumMatrices = 1;
+                vertexC.m_iMatrixId1 = iMatrixId;
+                vertexC.m_fWeight1 = 1.0f;
+                vertexC.m_iMatrixId2 = -1;
+                vertexC.m_fWeight2 = 0.0f;
+                vertexC.m_iMatrixId3 = -1;
+                vertexC.m_fWeight3 = 0.0f;
+
+                newTri.m_A = vertexA;
+                newTri.m_B = vertexB;
+                newTri.m_C = vertexC;
+                newTri.m_iMaterialId = oldTri.m_iMaterialId;
+
+                newTriangles.Add(newTri);
+            }
+
+            List<BVHNode> newBVH = CreateBVH(newTriangles);
+            newTriangles.Clear();
+
+            m_mtxMutex.WaitOne();
+            Int32 iId = m_listObjects.Count;
+
+            BVHObject newObject = new BVHObject();
+            newObject.iOffset = m_listBVHNodes.Count;
+            newObject.iCount = newBVH.Count;
+            newObject.iType = (byte)BVHObjectType.Dynamic;
+            m_listObjects.Add(newObject);
+            RefitTree(iId, false);
+
+            m_listBVHNodes.AddRange(newBVH);
+            m_mtxMutex.ReleaseMutex();
+
+            return iId;
+        }
+
+        public Int32 CreateAnimatedObject(List<Triangle> triangles)
+        {
+            List<BVHNode> newBVH = CreateBVH(triangles);
+
+            m_mtxMutex.WaitOne();
+            Int32 iId = m_listObjects.Count;
+
+            BVHObject newObject = new BVHObject();
+            newObject.iOffset = m_listBVHNodes.Count;
+            newObject.iCount = newBVH.Count;
+            newObject.iType = (byte)BVHObjectType.Animated;
+            m_listObjects.Add(newObject);
+            RefitTree(iId, false);
+
+            m_listBVHNodes.AddRange(newBVH);
+            m_mtxMutex.ReleaseMutex();
+
+            return iId;
+        }
+
+        public static List<BVHNode> CreateBVH(List<Triangle> triangles0)
         {
             List<BVHNode> tree = new List<BVHNode>();
 
@@ -329,147 +629,6 @@ namespace OpenCLRenderer
 
             return tree;
         }
-    }
-
-    struct Material
-    {
-        public IMem m_clDiffuse;
-        public IMem m_clSpecular;
-        public IMem m_clNormal;
-    }
-
-    struct Matrix
-    {
-        public mat4 m_mMatrix;
-        public Int32 m_iParentId;
-    }
-
-    struct BVHObject
-    {
-        public Int32 iOffset;
-        public Int32 iCount;
-
-        public Int32 iIsRefitTree;
-    }
-
-    class Scene
-    {
-        public Scene()
-        {
-            ErrorCode error;
-
-            Platform[] platforms = Cl.GetPlatformIDs(out error);
-            if (error != ErrorCode.Success)
-            {
-                throw new Exception("Cl.GetPlatformIDs");
-            }
-
-            foreach (Platform platform in platforms)
-            {
-                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu, out error))
-                {
-                    if (error != ErrorCode.Success) { continue; }
-                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
-
-                    m_Context = Cl.CreateContext(null, 1, new Device[] { device }, null, IntPtr.Zero, out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateContext");
-                    }
-
-                    return;
-                }
-            }
-
-            throw new Exception("Scene: Not find OpenCL GPU device!");
-        }
-
-        // Matrix
-        public Int32 GenMatrix()
-        {
-            m_mtxMutex.WaitOne();
-            Int32 iId = m_listMatrices.Count;
-
-            Matrix newMatrix = new Matrix();
-
-            m_listMatrices.Add(newMatrix);
-            m_mtxMutex.ReleaseMutex();
-            return iId;
-        }
-        public void SetMatrix(Int32 iId, mat4 mMatrix, Int32 iParentId = -1)
-        {
-            m_mtxMutex.WaitOne();
-            Matrix newMatrix = new Matrix();
-
-            newMatrix.m_mMatrix = mMatrix;
-            newMatrix.m_iParentId = iParentId;
-
-            m_listMatrices[iId] = newMatrix;
-            m_mtxMutex.ReleaseMutex();
-        }
-
-        // Material
-        public Int32 GenMaterial()
-        {
-            m_mtxMutex.WaitOne();
-            Int32 iId = m_listMaterials.Count;
-
-            Material newMaterial = new Material();
-
-            m_listMaterials.Add(newMaterial);
-            m_mtxMutex.ReleaseMutex();
-            return iId;
-        }
-        public void SetMaterial(Int32 iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
-        {
-            m_mtxMutex.WaitOne();
-            Material newMaterial = new Material();
-
-            newMaterial.m_clDiffuse  = CreateOpenCLTextureFromFile(@strDiffuseFileName);
-            newMaterial.m_clSpecular = CreateOpenCLTextureFromFile(@strSpecularFileName);
-            newMaterial.m_clNormal   = CreateOpenCLTextureFromFile(@strNormalFileName);
-
-            m_listMaterials[iId] = newMaterial;
-            m_mtxMutex.ReleaseMutex();
-        }
-        IMem CreateOpenCLTextureFromFile(string @strFileName)
-        {
-            ErrorCode error;
-
-            Bitmap bitmap = new Bitmap(@strFileName);
-            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-            Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
-            BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            OpenCL.Net.ImageFormat format = new OpenCL.Net.ImageFormat(ChannelOrder.RGBA, ChannelType.Unorm_Int8);
-            IMem clTexture = Cl.CreateImage2D(m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, format, new IntPtr(bitmap.Width), new IntPtr(bitmap.Height), new IntPtr(0), bitmapData.Scan0, out error);
-
-            if (error != ErrorCode.Success)
-            {
-                throw new Exception("Cl.CreateImage2D: " + strFileName);
-            }
-
-            bitmap.Dispose();
-            bitmap = null;
-
-            return clTexture;
-        }
-
-        // BVH to World
-        public Int32 Add(List<BVHNode> newBVH)
-        {
-            m_mtxMutex.WaitOne();
-            Int32 iId = m_listObjects.Count;
-
-            BVHObject newObject = new BVHObject();
-            newObject.iOffset = m_listBVHNodes.Count;
-            newObject.iCount = newBVH.Count;
-            m_listObjects.Add(newObject);
-            RefitTree(iId, true);
-
-            m_listBVHNodes.AddRange(newBVH);
-            m_mtxMutex.ReleaseMutex();
-            return iId;
-        }
 
         public void RefitTree(Int32 iId, bool bIsTrue)
         {
@@ -485,6 +644,13 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             ;
             m_mtxMutex.ReleaseMutex();
+        }
+
+        enum BVHObjectType
+        {
+            Static = 1,
+            Dynamic = 2,
+            Animated = 3
         }
 
         Mutex m_mtxMutex = new Mutex();
