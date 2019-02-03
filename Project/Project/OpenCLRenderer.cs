@@ -56,7 +56,16 @@ namespace OpenCLRenderer
 
     struct Matrix
     {
-        public mat4 m_mMatrix;
+        public vec4 m_Row0;
+        public vec4 m_Row1;
+        public vec4 m_Row2;
+        public vec4 m_Row3;
+
+        public vec4 m_Column0;
+        public vec4 m_Column1;
+        public vec4 m_Column2;
+        public vec4 m_Column3;
+
         public Int32 m_iParentId;
     }
 
@@ -83,7 +92,17 @@ namespace OpenCLRenderer
 
             foreach (Platform platform in platforms)
             {
-                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu, out error))
+                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
+                {
+                    if (error != ErrorCode.Success) { continue; }
+                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
+
+                    // print name
+                    InfoBuffer info = Cl.GetDeviceInfo(device, DeviceInfo.Name, out error);
+                    System.Console.WriteLine(info.ToString());
+                }
+
+                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
                 {
                     if (error != ErrorCode.Success) { continue; }
                     if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
@@ -118,7 +137,16 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             Matrix newMatrix = new Matrix();
 
-            newMatrix.m_mMatrix = mMatrix;
+            newMatrix.m_Row0 = mMatrix.Row0;
+            newMatrix.m_Row1 = mMatrix.Row1;
+            newMatrix.m_Row2 = mMatrix.Row2;
+            newMatrix.m_Row3 = mMatrix.Row3;
+
+            newMatrix.m_Column0 = mMatrix.Column0;
+            newMatrix.m_Column1 = mMatrix.Column1;
+            newMatrix.m_Column2 = mMatrix.Column2;
+            newMatrix.m_Column3 = mMatrix.Column3;
+
             newMatrix.m_iParentId = iParentId;
 
             m_listMatrices[iId] = newMatrix;

@@ -223,6 +223,9 @@ namespace Project
             text_coords.Clear();
             text_coords = null;
 
+            normals.Clear();
+            normals = null;
+
             // material to id
             material_to_id.Clear();
             material_to_id = null;

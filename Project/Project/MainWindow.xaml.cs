@@ -120,6 +120,9 @@ namespace Project
                 m_Scene.CreateStaticObject(triangles, mat4.Identity);
                 m_Scene.CreateDynamicObject(triangles, iMatrixId);
                 m_Scene.CreateAnimatedObject(triangles);
+
+                triangles.Clear();
+                objLoader.Release();
             });
             
             m_Scene.Commit();
