@@ -1,5 +1,5 @@
-﻿using GlmSharp;
-using OpenCL.Net;
+﻿using Cekirdekler;
+using GlmSharp;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -49,9 +49,9 @@ namespace OpenCLRenderer
 
     struct Material
     {
-        public IMem m_clDiffuse;
-        public IMem m_clSpecular;
-        public IMem m_clNormal;
+        //public IMem m_clDiffuse;
+        //public IMem m_clSpecular;
+        //public IMem m_clNormal;
     }
 
     struct Matrix
@@ -75,49 +75,18 @@ namespace OpenCLRenderer
         public Int32 iCount;
         public byte iType;
 
-        public Int32 iIsRefitTree;
+        public byte iIsRefitTree;
     }
 
     class Scene
     {
         public Scene()
         {
-            ErrorCode error;
-
-            Platform[] platforms = Cl.GetPlatformIDs(out error);
-            if (error != ErrorCode.Success)
-            {
-                throw new Exception("Cl.GetPlatformIDs");
-            }
-
-            foreach (Platform platform in platforms)
-            {
-                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
-                {
-                    if (error != ErrorCode.Success) { continue; }
-                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
-
-                    // print name
-                    InfoBuffer info = Cl.GetDeviceInfo(device, DeviceInfo.Name, out error);
-                    System.Console.WriteLine(info.ToString());
-                }
-
-                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
-                {
-                    if (error != ErrorCode.Success) { continue; }
-                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
-
-                    m_Context = Cl.CreateContext(null, 1, new Device[] { device }, null, IntPtr.Zero, out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateContext");
-                    }
-
-                    return;
-                }
-            }
-
-            throw new Exception("Scene: Not find OpenCL GPU device!");
+            Cekirdekler.Hardware.ClPlatforms platforms = Cekirdekler.Hardware.ClPlatforms.all();
+            ClNumberCruncher gpu = new ClNumberCruncher(Cekirdekler.AcceleratorType.GPU,
+@"
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+");
         }
 
         // Matrix
@@ -170,51 +139,35 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             Material newMaterial = new Material();
 
-            newMaterial.m_clDiffuse  = CreateOpenCLTextureFromFile(@strDiffuseFileName);
-            newMaterial.m_clSpecular = CreateOpenCLTextureFromFile(@strSpecularFileName);
-            newMaterial.m_clNormal   = CreateOpenCLTextureFromFile(@strNormalFileName);
+            //newMaterial.m_clDiffuse  = CreateOpenCLTextureFromFile(@strDiffuseFileName);
+            //newMaterial.m_clSpecular = CreateOpenCLTextureFromFile(@strSpecularFileName);
+            //newMaterial.m_clNormal   = CreateOpenCLTextureFromFile(@strNormalFileName);
 
             m_listMaterials[iId] = newMaterial;
             m_mtxMutex.ReleaseMutex();
         }
-        IMem CreateOpenCLTextureFromFile(string @strFileName)
-        {
-            ErrorCode error;
-
-            Bitmap bitmap = new Bitmap(@strFileName);
-            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-            Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
-            BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            OpenCL.Net.ImageFormat format = new OpenCL.Net.ImageFormat(ChannelOrder.RGBA, ChannelType.Unorm_Int8);
-            IMem clTexture = Cl.CreateImage2D(m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, format, new IntPtr(bitmap.Width), new IntPtr(bitmap.Height), new IntPtr(0), bitmapData.Scan0, out error);
-
-            if (error != ErrorCode.Success)
-            {
-                throw new Exception("Cl.CreateImage2D: " + strFileName);
-            }
-
-            bitmap.Dispose();
-            bitmap = null;
-
-            return clTexture;
-        }
-
-        //// BVH to World
-        //public Int32 Add(List<BVHNode> newBVH)
+        //IMem CreateOpenCLTextureFromFile(string @strFileName)
         //{
-        //    m_mtxMutex.WaitOne();
-        //    Int32 iId = m_listObjects.Count;
+        //    ErrorCode error;
         //
-        //    BVHObject newObject = new BVHObject();
-        //    newObject.iOffset = m_listBVHNodes.Count;
-        //    newObject.iCount = newBVH.Count;
-        //    m_listObjects.Add(newObject);
-        //    RefitTree(iId, true);
+        //    Bitmap bitmap = new Bitmap(@strFileName);
+        //    bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+        //    Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+        //    BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        //    OpenCL.Net.ImageFormat format = new OpenCL.Net.ImageFormat(ChannelOrder.RGBA, ChannelType.Unorm_Int8);
+        //    IMem clTexture = Cl.CreateImage2D(m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, format, new IntPtr(bitmap.Width), new IntPtr(bitmap.Height), new IntPtr(0), bitmapData.Scan0, out error);
         //
-        //    m_listBVHNodes.AddRange(newBVH);
-        //    m_mtxMutex.ReleaseMutex();
-        //    return iId;
+        //    if (error != ErrorCode.Success)
+        //    {
+        //        throw new Exception("Cl.CreateImage2D: " + strFileName);
+        //    }
+        //
+        //    bitmap.Dispose();
+        //    bitmap = null;
+        //
+        //    return clTexture;
         //}
+
         static float GetDistance_Triangle_Triangle(Triangle tri1, Triangle tri2)
         {
             float fMinDistance = float.MaxValue;
@@ -662,7 +615,7 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
             BVHObject bvhObject = m_listObjects[iId];
-            bvhObject.iIsRefitTree = bIsTrue ? 1 : 0;
+            bvhObject.iIsRefitTree = (byte)(bIsTrue ? 1 : 0);
             m_listObjects[iId] = bvhObject;
             m_mtxMutex.ReleaseMutex();
         }
@@ -687,6 +640,6 @@ namespace OpenCLRenderer
         List<BVHObject> m_listObjects = new List<BVHObject>();
         List<BVHNode> m_listBVHNodes = new List<BVHNode>();
 
-        Context m_Context;
+        //Context m_Context;
     }
 }
