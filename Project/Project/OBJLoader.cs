@@ -82,7 +82,7 @@ namespace Project
             UInt32 material_id = 0;
             string mtllib = "";
 
-            NumberFormatInfo format = new CultureInfo("en-EN").NumberFormat;
+            NumberFormatInfo formatInfo = new CultureInfo("en-EN").NumberFormat;
 
             foreach (string line in lines) {
                 string[] words = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -92,18 +92,18 @@ namespace Project
                             break;
                         }
                     case ("v"): {
-                            vec3 v = new vec3(float.Parse(words[1], format), float.Parse(words[2], format), float.Parse(words[3], format));
+                            vec3 v = new vec3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
                             vertices.Add(v);
                             break;
                         }
                     case ("vn"):
                         {
-                            vec3 n = new vec3(float.Parse(words[1], format), float.Parse(words[2], format), float.Parse(words[3], format));
+                            vec3 n = new vec3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
                             normals.Add(n);
                             break;
                         }
                     case ("vt"): {
-                            vec2 vt = new vec2(float.Parse(words[1], format), float.Parse(words[2], format));
+                            vec2 vt = new vec2(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo));
                             text_coords.Add(vt);
                             break;
                         }

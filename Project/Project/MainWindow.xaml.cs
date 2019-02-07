@@ -33,7 +33,7 @@ namespace Project
 
             Mutex mtxMutex = new Mutex();
 
-            Parallel.For(0, 100, index =>
+            Parallel.For(0, 1, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
@@ -117,9 +117,13 @@ namespace Project
                     }
                 }
 
-                m_Scene.CreateStaticObject(triangles, mat4.Identity);
-                m_Scene.CreateDynamicObject(triangles, iMatrixId);
-                m_Scene.CreateAnimatedObject(triangles);
+                Int32 iId = m_Scene.GenObject();
+                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
+                m_Scene.SetObject(iId, staticObject);
+
+                //iId = m_Scene.GenObject();
+                //OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
+                //m_Scene.SetObject(iId, dynamicObject);
 
                 triangles.Clear();
                 objLoader.Release();
