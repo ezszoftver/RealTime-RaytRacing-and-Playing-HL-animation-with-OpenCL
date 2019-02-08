@@ -1,0 +1,473 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace OpenCLRenderer
+{
+    public static class OpenCLScript
+    {
+        public static string GetText()
+        {
+            return
+@"
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+typedef struct
+{
+    float4 row0;
+    float4 row1;
+    float4 row2;
+    float4 row3;
+    
+    float4 column0;
+    float4 column1;
+    float4 column2;
+    float4 column3;
+}
+Matrix4x4;
+
+float3 ToFloat3(float4 v)
+{
+    float3 ret;
+    ret.x = v.x;
+    ret.y = v.y;
+    ret.z = v.z;
+    return ret;
+}
+
+float4 ToFloat4(float3 v, float w)
+{
+    float4 ret;
+    ret.x = v.x;
+    ret.y = v.y;
+    ret.z = v.z;
+    ret.w = w;
+    return ret;
+}
+
+float4 Mult_Matrix4x4Float3(Matrix4x4 T, float3 v, float w)
+{
+    float4 ret;
+
+    float4 v1 = ToFloat4(v, w);
+
+    ret.x = dot(T.row0, v1);
+    ret.y = dot(T.row1, v1);
+    ret.z = dot(T.row2, v1);
+    ret.w = dot(T.row3, v1);
+
+    return ret;
+}
+
+float4 Mult_Matrix4x4Float4(Matrix4x4 T, float4 v)
+{
+    float4 ret;
+
+    ret.x = dot(T.row0, v);
+    ret.y = dot(T.row1, v);
+    ret.z = dot(T.row2, v);
+    ret.w = dot(T.row3, v);
+
+    return ret;
+}
+
+Matrix4x4 Mult_Matrix4x4Float(Matrix4x4 T, float scale)
+{
+    Matrix4x4 ret;
+
+    ret.row0 = T.row0;
+    ret.row1 = T.row1;
+    ret.row2 = T.row2;
+    ret.row3 = T.row3;
+
+    ret.column0 = T.column0;
+    ret.column1 = T.column1;
+    ret.column2 = T.column2;
+    ret.column3 = T.column3;
+
+    ret.row0.x *= scale;
+    ret.row1.y *= scale;
+    ret.row2.z *= scale;
+
+    ret.column0.x *= scale;
+    ret.column1.y *= scale;
+    ret.column2.z *= scale;
+
+    return ret;
+}
+
+Matrix4x4 Mult_Matrix4x4Matrix4x4(Matrix4x4 T2, Matrix4x4 T1)
+{
+    Matrix4x4 ret;
+
+    float m00 = dot(T1.row0, T2.column0);
+    float m01 = dot(T1.row0, T2.column1);
+    float m02 = dot(T1.row0, T2.column2);
+    float m03 = dot(T1.row0, T2.column3);
+    
+    float m10 = dot(T1.row1, T2.column0);
+    float m11 = dot(T1.row1, T2.column1);
+    float m12 = dot(T1.row1, T2.column2);
+    float m13 = dot(T1.row1, T2.column3);
+    
+    float m20 = dot(T1.row2, T2.column0);
+    float m21 = dot(T1.row2, T2.column1);
+    float m22 = dot(T1.row2, T2.column2);
+    float m23 = dot(T1.row2, T2.column3);
+    
+    float m30 = dot(T1.row3, T2.column0);
+    float m31 = dot(T1.row3, T2.column1);
+    float m32 = dot(T1.row3, T2.column2);
+    float m33 = dot(T1.row3, T2.column3);
+
+    ret.row0.x = m00;
+    ret.row0.y = m01;
+    ret.row0.z = m02;
+    ret.row0.w = m03;
+
+    ret.row1.x = m10;
+    ret.row1.y = m11;
+    ret.row1.z = m12;
+    ret.row1.w = m13;
+
+    ret.row2.x = m20;
+    ret.row2.y = m21;
+    ret.row2.z = m22;
+    ret.row2.w = m23;
+
+    ret.row3.x = m30;
+    ret.row3.y = m31;
+    ret.row3.z = m32;
+    ret.row3.w = m33;
+
+    ret.column0 = m00;
+    ret.column0 = m10;
+    ret.column0 = m20;
+    ret.column0 = m30;
+
+    ret.column1 = m01;
+    ret.column1 = m11;
+    ret.column1 = m21;
+    ret.column1 = m31;
+
+    ret.column2 = m02;
+    ret.column2 = m12;
+    ret.column2 = m22;
+    ret.column2 = m32;
+
+    ret.column3 = m03;
+    ret.column3 = m13;
+    ret.column3 = m23;
+    ret.column3 = m33;
+
+    return ret;
+}
+
+Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
+{
+    float m[16] = 
+        {  
+            T.row0.x, T.row0.y, T.row0.z, T.row0.w,
+            T.row1.x, T.row1.y, T.row1.z, T.row1.w,
+            T.row2.x, T.row2.y, T.row2.z, T.row2.w,
+            T.row3.x, T.row3.y, T.row3.z, T.row3.w,
+        };
+
+    float inv[16], det;
+    int i;
+
+    inv[0] = m[5]  * m[10] * m[15] - 
+             m[5]  * m[11] * m[14] - 
+             m[9]  * m[6]  * m[15] + 
+             m[9]  * m[7]  * m[14] +
+             m[13] * m[6]  * m[11] - 
+             m[13] * m[7]  * m[10];
+
+    inv[4] = -m[4]  * m[10] * m[15] + 
+              m[4]  * m[11] * m[14] + 
+              m[8]  * m[6]  * m[15] - 
+              m[8]  * m[7]  * m[14] - 
+              m[12] * m[6]  * m[11] + 
+              m[12] * m[7]  * m[10];
+
+    inv[8] = m[4]  * m[9] * m[15] - 
+             m[4]  * m[11] * m[13] - 
+             m[8]  * m[5] * m[15] + 
+             m[8]  * m[7] * m[13] + 
+             m[12] * m[5] * m[11] - 
+             m[12] * m[7] * m[9];
+
+    inv[12] = -m[4]  * m[9] * m[14] + 
+               m[4]  * m[10] * m[13] +
+               m[8]  * m[5] * m[14] - 
+               m[8]  * m[6] * m[13] - 
+               m[12] * m[5] * m[10] + 
+               m[12] * m[6] * m[9];
+
+    inv[1] = -m[1]  * m[10] * m[15] + 
+              m[1]  * m[11] * m[14] + 
+              m[9]  * m[2] * m[15] - 
+              m[9]  * m[3] * m[14] - 
+              m[13] * m[2] * m[11] + 
+              m[13] * m[3] * m[10];
+
+    inv[5] = m[0]  * m[10] * m[15] - 
+             m[0]  * m[11] * m[14] - 
+             m[8]  * m[2] * m[15] + 
+             m[8]  * m[3] * m[14] + 
+             m[12] * m[2] * m[11] - 
+             m[12] * m[3] * m[10];
+
+    inv[9] = -m[0]  * m[9] * m[15] + 
+              m[0]  * m[11] * m[13] + 
+              m[8]  * m[1] * m[15] - 
+              m[8]  * m[3] * m[13] - 
+              m[12] * m[1] * m[11] + 
+              m[12] * m[3] * m[9];
+
+    inv[13] = m[0]  * m[9] * m[14] - 
+              m[0]  * m[10] * m[13] - 
+              m[8]  * m[1] * m[14] + 
+              m[8]  * m[2] * m[13] + 
+              m[12] * m[1] * m[10] - 
+              m[12] * m[2] * m[9];
+
+    inv[2] = m[1]  * m[6] * m[15] - 
+             m[1]  * m[7] * m[14] - 
+             m[5]  * m[2] * m[15] + 
+             m[5]  * m[3] * m[14] + 
+             m[13] * m[2] * m[7] - 
+             m[13] * m[3] * m[6];
+
+    inv[6] = -m[0]  * m[6] * m[15] + 
+              m[0]  * m[7] * m[14] + 
+              m[4]  * m[2] * m[15] - 
+              m[4]  * m[3] * m[14] - 
+              m[12] * m[2] * m[7] + 
+              m[12] * m[3] * m[6];
+
+    inv[10] = m[0]  * m[5] * m[15] - 
+              m[0]  * m[7] * m[13] - 
+              m[4]  * m[1] * m[15] + 
+              m[4]  * m[3] * m[13] + 
+              m[12] * m[1] * m[7] - 
+              m[12] * m[3] * m[5];
+
+    inv[14] = -m[0]  * m[5] * m[14] + 
+               m[0]  * m[6] * m[13] + 
+               m[4]  * m[1] * m[14] - 
+               m[4]  * m[2] * m[13] - 
+               m[12] * m[1] * m[6] + 
+               m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] + 
+              m[1] * m[7] * m[10] + 
+              m[5] * m[2] * m[11] - 
+              m[5] * m[3] * m[10] - 
+              m[9] * m[2] * m[7] + 
+              m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] - 
+             m[0] * m[7] * m[10] - 
+             m[4] * m[2] * m[11] + 
+             m[4] * m[3] * m[10] + 
+             m[8] * m[2] * m[7] - 
+             m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] + 
+               m[0] * m[7] * m[9] + 
+               m[4] * m[1] * m[11] - 
+               m[4] * m[3] * m[9] - 
+               m[8] * m[1] * m[7] + 
+               m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] - 
+              m[0] * m[6] * m[9] - 
+              m[4] * m[1] * m[10] + 
+              m[4] * m[2] * m[9] + 
+              m[8] * m[1] * m[6] - 
+              m[8] * m[2] * m[5];
+
+    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    det = 1.0 / det;
+
+    float invOut[16];
+    for (i = 0; i < 16; i++)
+        invOut[i] = inv[i] * det;
+
+    float m00 = invOut[0];  float m01 = invOut[1];  float m02 = invOut[2];  float m03 = invOut[3];
+    float m10 = invOut[4];  float m11 = invOut[5];  float m12 = invOut[6];  float m13 = invOut[7];
+    float m20 = invOut[8];  float m21 = invOut[9];  float m22 = invOut[10]; float m23 = invOut[11];
+    float m30 = invOut[12]; float m31 = invOut[13]; float m32 = invOut[14]; float m33 = invOut[15];
+
+    Matrix4x4 ret;
+
+    ret.row0.x = m00;
+    ret.row0.y = m01;
+    ret.row0.z = m02;
+    ret.row0.w = m03;
+
+    ret.row1.x = m10;
+    ret.row1.y = m11;
+    ret.row1.z = m12;
+    ret.row1.w = m13;
+
+    ret.row2.x = m20;
+    ret.row2.y = m21;
+    ret.row2.z = m22;
+    ret.row2.w = m23;
+
+    ret.row3.x = m30;
+    ret.row3.y = m31;
+    ret.row3.z = m32;
+    ret.row3.w = m33;
+
+    ret.column0 = m00;
+    ret.column0 = m10;
+    ret.column0 = m20;
+    ret.column0 = m30;
+
+    ret.column1 = m01;
+    ret.column1 = m11;
+    ret.column1 = m21;
+    ret.column1 = m31;
+
+    ret.column2 = m02;
+    ret.column2 = m12;
+    ret.column2 = m22;
+    ret.column2 = m32;
+
+    ret.column3 = m03;
+    ret.column3 = m13;
+    ret.column3 = m23;
+    ret.column3 = m33;
+
+    return ret;
+}
+
+typedef struct
+{
+    float3 v;
+    float3 n;
+    float2 tc;
+    int numMatrices;
+    int matrixId1;
+    int matrixId2;
+    int matrixId3;
+    float weight1;
+    float weight2;
+    float weight3;
+}
+Vertex;
+
+typedef struct 
+{
+    Vertex a;
+    Vertex b;
+    Vertex c;
+    int materialId;
+}
+Triangle;
+
+typedef struct
+{
+    float3 min;
+    float3 max;
+}
+BBox;
+
+typedef struct
+{
+    Triangle triangle;
+    BBox bbox;
+    int left;
+    int right;
+}
+BVHNode;
+
+
+#define Static  1
+#define Dynamic 2
+
+typedef struct 
+{
+    int type;
+}
+BVHNodeType;
+
+Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
+{
+    Vertex out;
+    
+    out.numMatrices = in.numMatrices;
+    out.matrixId1   = in.matrixId1;
+    out.matrixId2   = in.matrixId2;
+    out.matrixId3   = in.matrixId3;
+    out.weight1     = in.weight1;
+    out.weight2     = in.weight2;
+    out.weight3     = in.weight3;
+
+    if (in.numMatrices == 0) 
+    {
+        out = in;
+    }
+    else if (in.numMatrices == 1) 
+    {
+        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f));
+        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f));
+    }
+    else if (in.numMatrices == 2)
+    {
+        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.v, 1.0f));
+    
+        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.n, 0.0f));
+    }
+    else if (in.numMatrices == 3)
+    {
+        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.v, 1.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), in.v, 1.0f));
+    
+        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.n, 0.0f)) 
+              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), in.n, 0.0f));
+    }
+
+    return out;
+}
+
+__kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *out_BVHNodes)
+{
+    int id = get_global_id(0);
+
+    BVHNodeType bvhNodeType = in_BVHNodeTypes[id];
+    BVHNode inBVHNode = in_BVHNodes[id];
+    BVHNode outBVHNode;
+
+    if (Static == bvhNodeType.type) 
+    {
+        outBVHNode = inBVHNode;
+    }
+    else if (Dynamic == bvhNodeType.type)
+    {
+        if (-1 == inBVHNode.left && -1 == inBVHNode.right)
+        {
+            outBVHNode.triangle.a = VertexShader(inBVHNode.triangle.a, in_Matrices);
+            outBVHNode.triangle.b = VertexShader(inBVHNode.triangle.b, in_Matrices);
+            outBVHNode.triangle.c = VertexShader(inBVHNode.triangle.c, in_Matrices);
+            outBVHNode.triangle.materialId = inBVHNode.triangle.materialId;
+        }
+    }
+
+    out_BVHNodes[id] = outBVHNode;
+}
+
+";
+        }
+    }
+}

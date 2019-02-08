@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace Project
 {
@@ -117,21 +118,66 @@ namespace Project
                     }
                 }
 
-                Int32 iId = m_Scene.GenObject();
-                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
-                m_Scene.SetObject(iId, staticObject);
-
+                Int32 iId;
                 //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
-                //m_Scene.SetObject(iId, dynamicObject);
+                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
+                //m_Scene.SetObject(iId, staticObject);
+
+                iId = m_Scene.GenObject();
+                OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
+                m_Scene.SetObject(iId, dynamicObject);
 
                 triangles.Clear();
                 objLoader.Release();
             });
             
             m_Scene.Commit();
+
+            m_Timer = new DispatcherTimer();
+            m_Timer.Tick += Timer_Tick;
+            m_Timer.Interval = TimeSpan.FromMilliseconds(0);
+
+            m_ElapsedTime = m_CurrentTime = DateTime.Now;
+            m_fSec = 0.0f;
+            m_Timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            // delta time
+            m_ElapsedTime = m_CurrentTime;
+            m_CurrentTime = DateTime.Now;
+            m_fDeltaTime = (float)(m_CurrentTime - m_ElapsedTime).TotalSeconds;
+
+            // FPS
+            FPS++;
+            m_fSec += m_fDeltaTime;
+            if (m_fSec >= 1.0f)
+            {
+                this.Title = FPS + " FPS";
+                m_fSec = 0.0f;
+                FPS = 0;
+            }
+
+            m_Scene.RunVertexShader();
+        }
+
+        private void Window_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (null != m_Timer)
+            {
+                m_Timer.Stop();
+                m_Timer = null;
+            }
         }
 
         OpenCLRenderer.Scene m_Scene = null;
+
+        DispatcherTimer m_Timer = null;
+        int FPS = 0;
+        DateTime m_ElapsedTime;
+        DateTime m_CurrentTime;
+        float m_fDeltaTime;
+        float m_fSec;
     }
 }

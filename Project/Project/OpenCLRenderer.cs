@@ -17,7 +17,7 @@ namespace OpenCLRenderer
         public vec3 m_V;
         public vec3 m_N;
         public vec2 m_TC;
-        public byte m_iNumMatrices;
+        public Int32 m_iNumMatrices;
         public Int32 m_iMatrixId1;
         public Int32 m_iMatrixId2;
         public Int32 m_iMatrixId3;
@@ -63,12 +63,8 @@ namespace OpenCLRenderer
 
     struct BVHObject
     {
-        public byte m_iType;
+        public Int32 m_iType;
         public List<BVHNode> m_listBVHNodes;
-    }
-    struct OpenCL_BVHObject
-    {
-        public byte m_iType;
     }
 
     class Scene
@@ -85,32 +81,56 @@ namespace OpenCLRenderer
 
             foreach (Platform platform in platforms)
             {
-                foreach (Device device in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
+                foreach (Device newDevice in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
                 {
                     if (error != ErrorCode.Success) { continue; }
-                    if (Cl.GetDeviceInfo(device, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
+                    if (Cl.GetDeviceInfo(newDevice, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
 
-                    Context newContext = Cl.CreateContext(null, 1, new Device[] { device }, null, IntPtr.Zero, out error);
+                    Context newContext = Cl.CreateContext(null, 1, new Device[] { newDevice }, null, IntPtr.Zero, out error);
                     if (error != ErrorCode.Success)
                     {
                         continue;
                     }
 
-                    InfoBuffer info = Cl.GetDeviceInfo(device, DeviceInfo.Name, out error);
+                    InfoBuffer info = Cl.GetDeviceInfo(newDevice, DeviceInfo.Name, out error);
 
                     // print name
                     //System.Console.WriteLine(info.ToString());
 
                     OpenCLDevice newOpenCLDevice = new OpenCLDevice();
                     newOpenCLDevice.m_Context = newContext;
+                    newOpenCLDevice.m_Device = newDevice;
                     newOpenCLDevice.m_strName = info.ToString();
                     m_listOpenCLDevices.Add(newOpenCLDevice);
                 }
             }
 
+            // have cl device ?
             if (0 == m_listOpenCLDevices.Count)
             {
                 throw new Exception("Scene: Not find OpenCL GPU device!");
+            }
+
+            // buils cl script
+            foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
+            {
+                using (OpenCL.Net.Program program = Cl.CreateProgramWithSource(clDevice.m_Context, 1, new[] { OpenCLScript.GetText() }, null, out error))
+                {
+                    error = Cl.BuildProgram(program, 1, new[] { clDevice.m_Device }, string.Empty, null, IntPtr.Zero);
+                    if (Cl.GetProgramBuildInfo(program, clDevice.m_Device, ProgramBuildInfo.Status, out error).CastTo<BuildStatus>() != BuildStatus.Success)
+                    {
+                        string strBuildInfo = Cl.GetProgramBuildInfo(program, clDevice.m_Device, ProgramBuildInfo.Log, out error).ToString();
+                        throw new Exception(strBuildInfo);
+                    }
+
+                    clDevice.kernelVertexShader = Cl.CreateKernel(program, "Main_VertexShader", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_VertexShader");
+                    }
+
+                    clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
+                }
             }
         }
 
@@ -126,6 +146,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
             return iId;
         }
+
         public void SetMatrix(Int32 iId, mat4 mMatrix)
         {
             m_mtxMutex.WaitOne();
@@ -157,6 +178,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
             return iId;
         }
+
         public void SetMaterial(Int32 iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
         {
             m_mtxMutex.WaitOne();
@@ -169,6 +191,7 @@ namespace OpenCLRenderer
             m_listMaterials[iId] = newMaterial;
             m_mtxMutex.ReleaseMutex();
         }
+
         Texture CreateTextureFromFile(string @strFileName)
         {
             Bitmap bitmap = new Bitmap(@strFileName);
@@ -419,7 +442,7 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             
             BVHObject newObject = new BVHObject();
-            newObject.m_iType = (byte)BVHObjectType.Static;
+            newObject.m_iType = (Int32)BVHObjectType.Static;
             newObject.m_listBVHNodes = newBVH;
 
             m_mtxMutex.ReleaseMutex();
@@ -434,7 +457,7 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
 
             BVHObject newObject = new BVHObject();
-            newObject.m_iType = (byte)BVHObjectType.Dynamic;
+            newObject.m_iType = (Int32)BVHObjectType.Dynamic;
             newObject.m_listBVHNodes = newBVH;
 
             m_mtxMutex.ReleaseMutex();
@@ -589,22 +612,23 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
 
             // opencl object eloallitasa
-            List<OpenCL_BVHObject> listOpenCLBVHObjects = new List<OpenCL_BVHObject>();
             // offset-ek eloallitasa
             List<BVHNodeOffset> listBVHNodesOffsets = new List<BVHNodeOffset>();
+            // all bvh one big list
+            List<BVHNode> listAllBVHNodes = new List<BVHNode>();
+            List<Int32> listAllBVHNodesType = new List<Int32>();
 
             foreach (BVHObject bvhObject in m_listObjects)
             {
-                // object
-                OpenCL_BVHObject newObject = new OpenCL_BVHObject();
-                newObject.m_iType = bvhObject.m_iType;
-                listOpenCLBVHObjects.Add(newObject);
-
                 // offset
                 BVHNodeOffset newOffset = new BVHNodeOffset();
                 newOffset.m_iOffset = listBVHNodesOffsets.Count;
                 newOffset.m_iNumBVHNodes = bvhObject.m_listBVHNodes.Count;
                 listBVHNodesOffsets.Add(newOffset);
+
+                // all list
+                listAllBVHNodes.AddRange(bvhObject.m_listBVHNodes);
+                foreach (BVHNode node in bvhObject.m_listBVHNodes) { listAllBVHNodesType.Add(bvhObject.m_iType); }
             }
 
             // bufferek letrehozasa, device-onkent
@@ -623,18 +647,45 @@ namespace OpenCLRenderer
                 clDevice.clInput_MatricesData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMatrices.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
 
-                // objektumok betoltese
-                clDevice.clInput_ObjectsData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listOpenCLBVHObjects.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: ObjectsData"); }
+                // all bvh nodes
+                clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
 
                 clDevice.clInput_BVHNodeOffsetsData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listBVHNodesOffsets.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: BVHNodeOffsetsData"); }
+
+                clDevice.clInput_AllBVHNodesType = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodesType.ToArray(), out error);
+                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodesType"); }
+
+                clDevice.clInput_AllBVHNodes = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodes.ToArray(), out error);
+                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
+
+                clDevice.clOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.ReadOnly, listAllBVHNodes.Count, out error);
+                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
 
-            listOpenCLBVHObjects.Clear();
             listBVHNodesOffsets.Clear();
+            listAllBVHNodes.Clear();
+            listAllBVHNodesType.Clear();
 
             m_mtxMutex.ReleaseMutex();
+        }
+
+        public void RunVertexShader()
+        {
+            Parallel.For(0, m_listOpenCLDevices.Count, index =>
+            {
+                OpenCLDevice device = m_listOpenCLDevices[index];
+
+                Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
+                Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
+                Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
+                Cl.SetKernelArg(device.kernelVertexShader, 3, device.clOutput_AllBVHNodes);
+
+                Event clevent;
+                IntPtr iCount = new IntPtr(device.m_iNumBVHNodes);
+                Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, null, new IntPtr[] { iCount }, null, 0, null, out clevent);
+                Cl.Finish(device.cmdQueue);
+            });
         }
 
         enum BVHObjectType
@@ -657,6 +708,10 @@ namespace OpenCLRenderer
     class OpenCLDevice
     {
         public Context m_Context;
+        public Device m_Device;
+        public CommandQueue cmdQueue;
+        public Kernel kernelVertexShader;
+
         public string m_strName;
 
         // textures
@@ -667,8 +722,12 @@ namespace OpenCLRenderer
         public IMem<Matrix> clInput_MatricesData;
 
         // objects
-        public IMem<OpenCL_BVHObject> clInput_ObjectsData;
         public IMem<BVHNodeOffset> clInput_BVHNodeOffsetsData;
+
+        public Int32 m_iNumBVHNodes;
+        public IMem<Int32> clInput_AllBVHNodesType;
+        public IMem<BVHNode> clInput_AllBVHNodes;
+        public IMem<BVHNode> clOutput_AllBVHNodes;
     }
 
     struct BVHNodeOffset
