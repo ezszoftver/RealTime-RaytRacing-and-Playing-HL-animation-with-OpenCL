@@ -472,6 +472,8 @@ namespace OpenCLRenderer
                         fMinDistance = fCurrentDistance;
                         id = i;
                     }
+
+                    if (fMinDistance < 0.00001f) { break; }
                 }
 
                 Triangle tri2 = triangles[id];
@@ -553,6 +555,8 @@ namespace OpenCLRenderer
                     parent.m_iRight = tree.Count;
                     tree.Add(node2);
 
+                    parent.m_BBox = GenBBox(node1.m_BBox, node2.m_BBox);
+
                     outBuffer.Add(parent);
                 }
 
@@ -566,6 +570,8 @@ namespace OpenCLRenderer
                     parent.m_iLeft = tree.Count;
                     tree.Add(node1);
                     parent.m_iRight = -1;
+
+                    parent.m_BBox = GenBBox(node1.m_BBox, node1.m_BBox);
 
                     outBuffer.Add(parent);
                 }
@@ -627,7 +633,6 @@ namespace OpenCLRenderer
 
             listOpenCLBVHObjects.Clear();
             listBVHNodesOffsets.Clear();
-
 
             m_mtxMutex.ReleaseMutex();
         }
