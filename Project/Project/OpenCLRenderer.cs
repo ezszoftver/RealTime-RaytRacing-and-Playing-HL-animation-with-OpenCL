@@ -168,11 +168,149 @@ namespace OpenCLRenderer
                     }
 
                     // RefitTree
-                    //clDevice.kernelRefitTree = Cl.CreateKernel(program, "Main_RefitTree", out error);
-                    //if (error != ErrorCode.Success)
-                    //{
-                    //    throw new Exception("Cl.CreateKernel: Main_RefitTree");
-                    //}
+                    clDevice.kernelRefitTree_Level2 = Cl.CreateKernel(program, "Main_RefitTree_Level2", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level2");
+                    }
+
+                    clDevice.kernelRefitTree_Level3 = Cl.CreateKernel(program, "Main_RefitTree_Level3", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level3");
+                    }
+
+                    clDevice.kernelRefitTree_Level4 = Cl.CreateKernel(program, "Main_RefitTree_Level4", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level4");
+                    }
+
+                    clDevice.kernelRefitTree_Level5 = Cl.CreateKernel(program, "Main_RefitTree_Level5", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level5");
+                    }
+
+                    clDevice.kernelRefitTree_Level6 = Cl.CreateKernel(program, "Main_RefitTree_Level6", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level6");
+                    }
+
+                    clDevice.kernelRefitTree_Level7 = Cl.CreateKernel(program, "Main_RefitTree_Level7", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level7");
+                    }
+
+                    clDevice.kernelRefitTree_Level8 = Cl.CreateKernel(program, "Main_RefitTree_Level8", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level8");
+                    }
+
+                    clDevice.kernelRefitTree_Level9 = Cl.CreateKernel(program, "Main_RefitTree_Level9", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level9");
+                    }
+
+                    clDevice.kernelRefitTree_Level10 = Cl.CreateKernel(program, "Main_RefitTree_Level10", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level10");
+                    }
+
+                    clDevice.kernelRefitTree_Level11 = Cl.CreateKernel(program, "Main_RefitTree_Level11", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level11");
+                    }
+
+                    clDevice.kernelRefitTree_Level12 = Cl.CreateKernel(program, "Main_RefitTree_Level12", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level12");
+                    }
+
+                    clDevice.kernelRefitTree_Level13 = Cl.CreateKernel(program, "Main_RefitTree_Level13", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level13");
+                    }
+
+                    clDevice.kernelRefitTree_Level14 = Cl.CreateKernel(program, "Main_RefitTree_Level14", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level14");
+                    }
+
+                    clDevice.kernelRefitTree_Level15 = Cl.CreateKernel(program, "Main_RefitTree_Level15", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level15");
+                    }
+
+                    clDevice.kernelRefitTree_Level16 = Cl.CreateKernel(program, "Main_RefitTree_Level16", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level16");
+                    }
+
+                    clDevice.kernelRefitTree_Level17 = Cl.CreateKernel(program, "Main_RefitTree_Level17", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level17");
+                    }
+
+                    clDevice.kernelRefitTree_Level18 = Cl.CreateKernel(program, "Main_RefitTree_Level18", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level18");
+                    }
+
+                    clDevice.kernelRefitTree_Level19 = Cl.CreateKernel(program, "Main_RefitTree_Level19", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level19");
+                    }
+
+                    clDevice.kernelRefitTree_Level20 = Cl.CreateKernel(program, "Main_RefitTree_Level20", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level20");
+                    }
+
+                    clDevice.kernelRefitTree_Level21 = Cl.CreateKernel(program, "Main_RefitTree_Level21", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level21");
+                    }
+
+                    clDevice.kernelRefitTree_Level22 = Cl.CreateKernel(program, "Main_RefitTree_Level22", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level22");
+                    }
+
+                    clDevice.kernelRefitTree_Level23 = Cl.CreateKernel(program, "Main_RefitTree_Level23", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level23");
+                    }
+
+                    clDevice.kernelRefitTree_Level24 = Cl.CreateKernel(program, "Main_RefitTree_Level24", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level24");
+                    }
+
+                    clDevice.kernelRefitTree_Level25 = Cl.CreateKernel(program, "Main_RefitTree_Level25", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree Level25");
+                    }
 
                     clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
                 }
@@ -581,10 +719,12 @@ namespace OpenCLRenderer
                 leaf1.m_Triangle = tri1;
                 leaf1.m_iLeft = -1;
                 leaf1.m_iRight = -1;
+                leaf1.m_BBox = GenBBox(tri1, tri1);
                 BVHNode leaf2 = new BVHNode();
                 leaf2.m_Triangle = tri2;
                 leaf2.m_iLeft = -1;
                 leaf2.m_iRight = -1;
+                leaf2.m_BBox = GenBBox(tri2, tri2);
 
                 BVHNode parent = new BVHNode();
                 parent.m_iLeft = tree.Count;
@@ -606,6 +746,7 @@ namespace OpenCLRenderer
                 leaf1.m_Triangle = tri1;
                 leaf1.m_iLeft = -1;
                 leaf1.m_iRight = -1;
+                leaf1.m_BBox = GenBBox(tri1, tri1);
 
                 BVHNode parent = new BVHNode();
                 parent.m_iLeft = tree.Count;
@@ -722,6 +863,7 @@ namespace OpenCLRenderer
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
 
                 // all bvh nodes
+                clDevice.m_iNumObjects = listBVHNodesOffsets.Count;
                 clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
 
                 clDevice.clInput_BVHNodeOffsetsData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listBVHNodesOffsets.ToArray(), out error);
@@ -733,7 +875,7 @@ namespace OpenCLRenderer
                 clDevice.clInput_AllBVHNodes = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
 
-                clDevice.clOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadWrite, listAllBVHNodes.ToArray(), out error);
+                clDevice.clInputOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadWrite, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
 
@@ -746,16 +888,17 @@ namespace OpenCLRenderer
 
         public void RunVertexShader()
         {
+            m_mtxMutex.WaitOne();
+
             Parallel.For(0, m_listOpenCLDevices.Count, index =>
             {
                 ErrorCode error;
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                int intPtrSize = Marshal.SizeOf(typeof(IntPtr));
-                Cl.SetKernelArg(device.kernelVertexShader, 0, new IntPtr(intPtrSize), device.clInput_AllBVHNodesType);
-                Cl.SetKernelArg(device.kernelVertexShader, 1, new IntPtr(intPtrSize), device.clInput_AllBVHNodes);
-                Cl.SetKernelArg(device.kernelVertexShader, 2, new IntPtr(intPtrSize), device.clInput_MatricesData);
-                Cl.SetKernelArg(device.kernelVertexShader, 3, new IntPtr(intPtrSize), device.clOutput_AllBVHNodes);
+                Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
+                Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
+                Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
+                Cl.SetKernelArg(device.kernelVertexShader, 3, device.clInputOutput_AllBVHNodes);
 
                 Event clevent;
                 int iCount = device.m_iNumBVHNodes;
@@ -763,22 +906,138 @@ namespace OpenCLRenderer
                 error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
                 Cl.Finish(device.cmdQueue);
                 if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
-
-                // DEBUG
-                //BVHNode[] outzz = new BVHNode[iCount];
-                //error = Cl.EnqueueReadBuffer(device.cmdQueue, device.clOutput_AllBVHNodes, Bool.True, 0, iCount, outzz, 0, null, out clevent);
-                //Cl.Finish(device.cmdQueue);
-                //if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueReadBuffer"); }
             });
+
+            m_mtxMutex.ReleaseMutex();
         }
 
         public void RunRefitTree()
         {
+            m_mtxMutex.WaitOne();
+
             Parallel.For(0, m_listOpenCLDevices.Count, index =>
             {
-                OpenCLDevice device = m_listOpenCLDevices[index];
+                //ErrorCode error;
+                //OpenCLDevice device = m_listOpenCLDevices[index];
 
+                //Cl.SetKernelArg(device.kernelRefitTree, 0, device.clInput_BVHNodeOffsetsData);
+                //Cl.SetKernelArg(device.kernelRefitTree, 1, device.clInputOutput_AllBVHNodes);
+                //
+                //Event clevent;
+                //int iCount = device.m_iNumObjects;
+                //IntPtr intptrCount = new IntPtr(iCount);
+                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelRefitTree, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
+                //Cl.Finish(device.cmdQueue);
+                //if (error != ErrorCode.Success) { throw new Exception("RunRefitTree: Cl.EnqueueNDRangeKernel"); }
+
+                // level2
+                ;
+                // level3
+                ;
+                // level4
+                ;
+                // level5
+                ;
+                // level6
+                ;
+                // level7
+                ;
+                // level8
+                ;
+                // level9
+                ;
+                // level10
+                ;
+                // level11
+                ;
+                // level12
+                ;
+                // level13
+                ;
+                // level14
+                ;
+                // level15
+                ;
+                // level16
+                ;
+                // level17
+                ;
+                // level18
+                ;
+                // level19
+                ;
+                // level20
+                ;
+                // level21
+                ;
+                // level22
+                ;
+                // level23
+                ;
+                // level24
+                ;
+                // level25
+                ;
             });
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
+        bool IsVisited(BVHNode node)
+        {
+            if (   node.m_BBox.minx == 0
+                && node.m_BBox.miny == 0
+                && node.m_BBox.minz == 0
+                && node.m_BBox.maxx == 0
+                && node.m_BBox.maxy == 0
+                && node.m_BBox.maxz == 0
+                ) { return false; }
+            return true;
+        }
+
+        static BBox GenBBox(Triangle tri)
+        {
+            float fMinX = float.MaxValue;
+            float fMinY = float.MaxValue;
+            float fMinZ = float.MaxValue;
+
+            fMinX = Math.Min(fMinX, tri.m_A.m_Vx);
+            fMinX = Math.Min(fMinX, tri.m_B.m_Vx);
+            fMinX = Math.Min(fMinX, tri.m_C.m_Vx);
+
+            fMinY = Math.Min(fMinY, tri.m_A.m_Vy);
+            fMinY = Math.Min(fMinY, tri.m_B.m_Vy);
+            fMinY = Math.Min(fMinY, tri.m_C.m_Vy);
+            
+            fMinZ = Math.Min(fMinZ, tri.m_A.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri.m_B.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri.m_C.m_Vz);
+            
+            float fMaxX = float.MinValue;
+            float fMaxY = float.MinValue;
+            float fMaxZ = float.MinValue;
+
+            fMaxX = Math.Max(fMaxX, tri.m_A.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri.m_B.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri.m_C.m_Vx);
+            
+            fMaxY = Math.Max(fMaxY, tri.m_A.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri.m_B.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri.m_C.m_Vy);
+            
+            fMaxZ = Math.Max(fMaxZ, tri.m_A.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri.m_B.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri.m_C.m_Vz);
+            
+            BBox bbox = new BBox();
+            bbox.minx = fMinX;
+            bbox.miny = fMinY;
+            bbox.minz = fMinZ;
+            bbox.maxx = fMaxX;
+            bbox.maxy = fMaxY;
+            bbox.maxz = fMaxZ;
+
+            return bbox;
         }
 
         enum BVHObjectType
@@ -804,7 +1063,30 @@ namespace OpenCLRenderer
         public Device m_Device;
         public CommandQueue cmdQueue;
         public Kernel kernelVertexShader;
-        public Kernel kernelRefitTree;
+        public Kernel kernelRefitTree_Level2;
+        public Kernel kernelRefitTree_Level3;
+        public Kernel kernelRefitTree_Level4;
+        public Kernel kernelRefitTree_Level5;
+        public Kernel kernelRefitTree_Level6;
+        public Kernel kernelRefitTree_Level7;
+        public Kernel kernelRefitTree_Level8;
+        public Kernel kernelRefitTree_Level9;
+        public Kernel kernelRefitTree_Level10;
+        public Kernel kernelRefitTree_Level11;
+        public Kernel kernelRefitTree_Level12;
+        public Kernel kernelRefitTree_Level13;
+        public Kernel kernelRefitTree_Level14;
+        public Kernel kernelRefitTree_Level15;
+        public Kernel kernelRefitTree_Level16;
+        public Kernel kernelRefitTree_Level17;
+        public Kernel kernelRefitTree_Level18;
+        public Kernel kernelRefitTree_Level19;
+        public Kernel kernelRefitTree_Level20;
+        public Kernel kernelRefitTree_Level21;
+        public Kernel kernelRefitTree_Level22;
+        public Kernel kernelRefitTree_Level23;
+        public Kernel kernelRefitTree_Level24;
+        public Kernel kernelRefitTree_Level25;
 
         public string m_strName;
 
@@ -816,11 +1098,12 @@ namespace OpenCLRenderer
         public IMem<Matrix> clInput_MatricesData;
 
         // objects
+        public int m_iNumObjects;
         public IMem<BVHNodeOffset> clInput_BVHNodeOffsetsData;
 
         public int m_iNumBVHNodes;
         public IMem<int> clInput_AllBVHNodesType;
         public IMem<BVHNode> clInput_AllBVHNodes;
-        public IMem<BVHNode> clOutput_AllBVHNodes;
+        public IMem<BVHNode> clInputOutput_AllBVHNodes;
     }
 }

@@ -407,6 +407,109 @@ typedef struct
 }
 BVHNodeType;
 
+typedef struct 
+{
+    int offset;
+    int count;
+}
+BVHNodeOffset;
+
+BBox GenBBox_Tri(Triangle tri)
+{
+    float fMinX = +10000000.0f;
+    float fMinY = +10000000.0f;
+    float fMinZ = +10000000.0f;
+
+    fMinX = min(fMinX, tri.a.vx);
+    fMinX = min(fMinX, tri.b.vx);
+    fMinX = min(fMinX, tri.c.vx);
+
+    fMinY = min(fMinY, tri.a.vy);
+    fMinY = min(fMinY, tri.b.vy);
+    fMinY = min(fMinY, tri.c.vy);
+    
+    fMinZ = min(fMinZ, tri.a.vz);
+    fMinZ = min(fMinZ, tri.b.vz);
+    fMinZ = min(fMinZ, tri.c.vz);
+    
+    float fMaxX = -10000000.0f;
+    float fMaxY = -10000000.0f;
+    float fMaxZ = -10000000.0f;
+
+    fMaxX = max(fMaxX, tri.a.vx);
+    fMaxX = max(fMaxX, tri.b.vx);
+    fMaxX = max(fMaxX, tri.c.vx);
+    
+    fMaxY = max(fMaxY, tri.a.vy);
+    fMaxY = max(fMaxY, tri.b.vy);
+    fMaxY = max(fMaxY, tri.c.vy);
+    
+    fMaxZ = max(fMaxZ, tri.a.vz);
+    fMaxZ = max(fMaxZ, tri.b.vz);
+    fMaxZ = max(fMaxZ, tri.c.vz);
+    
+    BBox bbox;
+    bbox.minx = fMinX;
+    bbox.miny = fMinY;
+    bbox.minz = fMinZ;
+    bbox.maxx = fMaxX;
+    bbox.maxy = fMaxY;
+    bbox.maxz = fMaxZ;
+
+    return bbox;
+}
+
+BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
+{
+    float fMinX = +10000000.0f;
+    float fMinY = +10000000.0f;
+    float fMinZ = +10000000.0f;
+
+    fMinX = min(fMinX, bbox1.minx);
+    fMinX = min(fMinX, bbox1.maxx);
+    fMinX = min(fMinX, bbox2.minx);
+    fMinX = min(fMinX, bbox2.maxx);
+
+    fMinY = min(fMinY, bbox1.miny);
+    fMinY = min(fMinY, bbox1.maxy);
+    fMinY = min(fMinY, bbox2.miny);
+    fMinY = min(fMinY, bbox2.maxy);
+
+    fMinZ = min(fMinZ, bbox1.minz);
+    fMinZ = min(fMinZ, bbox1.maxz);
+    fMinZ = min(fMinZ, bbox2.minz);
+    fMinZ = min(fMinZ, bbox2.maxz);
+
+    float fMaxX = -10000000.0f;
+    float fMaxY = -10000000.0f;
+    float fMaxZ = -10000000.0f;
+
+    fMaxX = max(fMaxX, bbox1.minx);
+    fMaxX = max(fMaxX, bbox1.maxx);
+    fMaxX = max(fMaxX, bbox2.minx);
+    fMaxX = max(fMaxX, bbox2.maxx);
+
+    fMaxY = max(fMaxY, bbox1.miny);
+    fMaxY = max(fMaxY, bbox1.maxy);
+    fMaxY = max(fMaxY, bbox2.miny);
+    fMaxY = max(fMaxY, bbox2.maxy);
+
+    fMaxZ = max(fMaxZ, bbox1.minz);
+    fMaxZ = max(fMaxZ, bbox1.maxz);
+    fMaxZ = max(fMaxZ, bbox2.minz);
+    fMaxZ = max(fMaxZ, bbox2.maxz);
+
+    BBox bbox;
+    bbox.minx = fMinX;
+    bbox.miny = fMinY;
+    bbox.minz = fMinZ;
+    bbox.maxx = fMaxX;
+    bbox.maxy = fMaxY;
+    bbox.maxz = fMaxZ;
+
+    return bbox;
+}
+
 Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
     Vertex out;
@@ -491,14 +594,145 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode.triangle.a = VertexShader(inBVHNode.triangle.a, in_Matrices);
             outBVHNode.triangle.b = VertexShader(inBVHNode.triangle.b, in_Matrices);
             outBVHNode.triangle.c = VertexShader(inBVHNode.triangle.c, in_Matrices);
+
+            // level 1
+            outBVHNode.bbox = GenBBox_Tri(outBVHNode.triangle);
         }
         else
         {
             outBVHNode = inBVHNode;
+
+            // level 1
+            outBVHNode.bbox.minx = 0;
+            outBVHNode.bbox.miny = 0;
+            outBVHNode.bbox.minz = 0;
+            outBVHNode.bbox.maxx = 0;
+            outBVHNode.bbox.maxy = 0;
+            outBVHNode.bbox.maxz = 0;
         }
     }
 
     out_BVHNodes[id] = outBVHNode;
+}
+
+__kernel void Main_RefitTree_Level2()
+{
+
+}
+
+__kernel void Main_RefitTree_Level3()
+{
+
+}
+
+__kernel void Main_RefitTree_Level4()
+{
+
+}
+
+__kernel void Main_RefitTree_Level5()
+{
+
+}
+
+__kernel void Main_RefitTree_Level6()
+{
+
+}
+
+__kernel void Main_RefitTree_Level7()
+{
+
+}
+
+__kernel void Main_RefitTree_Level8()
+{
+
+}
+
+__kernel void Main_RefitTree_Level9()
+{
+
+}
+
+__kernel void Main_RefitTree_Level10()
+{
+
+}
+
+__kernel void Main_RefitTree_Level11()
+{
+
+}
+
+__kernel void Main_RefitTree_Level12()
+{
+
+}
+
+__kernel void Main_RefitTree_Level13()
+{
+
+}
+
+__kernel void Main_RefitTree_Level14()
+{
+
+}
+
+__kernel void Main_RefitTree_Level15()
+{
+
+}
+
+__kernel void Main_RefitTree_Level16()
+{
+
+}
+
+__kernel void Main_RefitTree_Level17()
+{
+
+}
+
+__kernel void Main_RefitTree_Level18()
+{
+
+}
+
+__kernel void Main_RefitTree_Level19()
+{
+
+}
+
+__kernel void Main_RefitTree_Level20()
+{
+
+}
+
+__kernel void Main_RefitTree_Level21()
+{
+
+}
+
+__kernel void Main_RefitTree_Level22()
+{
+
+}
+
+__kernel void Main_RefitTree_Level23()
+{
+
+}
+
+__kernel void Main_RefitTree_Level24()
+{
+
+}
+
+__kernel void Main_RefitTree_Level25()
+{
+
 }
 
 ";

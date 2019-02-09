@@ -175,6 +175,7 @@ namespace Project
             }
 
             m_Scene.RunVertexShader();
+            m_Scene.RunRefitTree();
         }
 
         private void Window_Unloaded(object sender, RoutedEventArgs e)
