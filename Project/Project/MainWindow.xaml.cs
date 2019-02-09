@@ -45,8 +45,8 @@ namespace Project
                 mtxMutex.ReleaseMutex();
 
                 // convert to triangle list
-                Int32 iMatrixId = m_Scene.GenMatrix();
-                m_Scene.SetMatrix(iMatrixId, mat4.Identity);
+                int iMatrixId = m_Scene.GenMatrix();
+                m_Scene.SetMatrix(iMatrixId, mat4.Translate(new vec3(100,200,300)));
 
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (OBJLoader.Material material in objLoader.materials)
@@ -55,7 +55,7 @@ namespace Project
                     string strSpecularTextureName = @strDirectory + @"Specular.bmp";
                     string strNormalTextureName = @strDirectory + @"Normal.bmp";
 
-                    Int32 iMaterialId = m_Scene.GenMaterial();
+                    int iMaterialId = m_Scene.GenMaterial();
                     m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
 
                     for (int i = 0; i < material.indices.Count; i += 3)
@@ -73,9 +73,14 @@ namespace Project
                         vec2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
 
                         OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
-                        vertexA.m_V = vA;
-                        vertexA.m_N = nA;
-                        vertexA.m_TC = tA;
+                        vertexA.m_Vx = vA.x;
+                        vertexA.m_Vy = vA.y;
+                        vertexA.m_Vz = vA.z;
+                        vertexA.m_Nx = nA.x;
+                        vertexA.m_Ny = nA.y;
+                        vertexA.m_Nz = nA.z;
+                        vertexA.m_TCx = tA.x;
+                        vertexA.m_TCy = tA.y;
                         vertexA.m_iNumMatrices = 1;
                         vertexA.m_iMatrixId1 = iMatrixId;
                         vertexA.m_fWeight1 = 1.0f;
@@ -85,9 +90,14 @@ namespace Project
                         vertexA.m_fWeight3 = 0.0f;
 
                         OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
-                        vertexB.m_V = vB;
-                        vertexB.m_N = nB;
-                        vertexB.m_TC = tB;
+                        vertexB.m_Vx = vB.x;
+                        vertexB.m_Vy = vB.y;
+                        vertexB.m_Vz = vB.z;
+                        vertexB.m_Nx = nB.x;
+                        vertexB.m_Ny = nB.y;
+                        vertexB.m_Nz = nB.z;
+                        vertexB.m_TCx = tB.x;
+                        vertexB.m_TCy = tB.y;
                         vertexB.m_iNumMatrices = 1;
                         vertexB.m_iMatrixId1 = iMatrixId;
                         vertexB.m_fWeight1 = 1.0f;
@@ -97,9 +107,14 @@ namespace Project
                         vertexB.m_fWeight3 = 0.0f;
 
                         OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
-                        vertexC.m_V = vC;
-                        vertexC.m_N = nC;
-                        vertexC.m_TC = tC;
+                        vertexC.m_Vx = vC.x;
+                        vertexC.m_Vy = vC.y;
+                        vertexC.m_Vz = vC.z;
+                        vertexC.m_Nx = nC.x;
+                        vertexC.m_Ny = nC.y;
+                        vertexC.m_Nz = nC.z;
+                        vertexC.m_TCx = tC.x;
+                        vertexC.m_TCy = tC.y;
                         vertexC.m_iNumMatrices = 1;
                         vertexC.m_iMatrixId1 = iMatrixId;
                         vertexC.m_fWeight1 = 1.0f;
@@ -118,7 +133,7 @@ namespace Project
                     }
                 }
 
-                Int32 iId;
+                int iId;
                 //iId = m_Scene.GenObject();
                 //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
                 //m_Scene.SetObject(iId, staticObject);

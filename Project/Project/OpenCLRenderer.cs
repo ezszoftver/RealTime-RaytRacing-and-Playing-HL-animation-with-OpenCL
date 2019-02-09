@@ -12,42 +12,56 @@ using System.Threading.Tasks;
 
 namespace OpenCLRenderer
 {
+    
     struct Vertex
     {
-        public vec3 m_V;
-        public vec3 m_N;
-        public vec2 m_TC;
-        public Int32 m_iNumMatrices;
-        public Int32 m_iMatrixId1;
-        public Int32 m_iMatrixId2;
-        public Int32 m_iMatrixId3;
+        public float m_Vx;
+        public float m_Vy;
+        public float m_Vz;
+        public float m_Nx;
+        public float m_Ny;
+        public float m_Nz;
+        public float m_TCx;
+        public float m_TCy;
+        public int m_iNumMatrices;
+        public int m_iMatrixId1;
+        public int m_iMatrixId2;
+        public int m_iMatrixId3;
         public float m_fWeight1;
         public float m_fWeight2;
         public float m_fWeight3;
     }
 
+    
     struct Triangle
     {
         public Vertex m_A;
         public Vertex m_B;
         public Vertex m_C;
-        public Int32 m_iMaterialId;
+        public int m_iMaterialId;
     }
 
+    
     struct BBox
     {
-        public vec3 min;
-        public vec3 max;
+        public float minx;
+        public float miny;
+        public float minz;
+        public float maxx;
+        public float maxy;
+        public float maxz;
     }
 
+    
     struct BVHNode
     {
         public Triangle m_Triangle;
         public BBox m_BBox;
-        public Int32 m_iLeft;
-        public Int32 m_iRight;
+        public int m_iLeft;
+        public int m_iRight;
     }
 
+    
     struct Matrix
     {
         public vec4 m_Row0;
@@ -61,9 +75,32 @@ namespace OpenCLRenderer
         public vec4 m_Column3;
     }
 
+    
+    struct BVHNodeOffset
+    {
+        public int m_iOffset;
+        public int m_iNumBVHNodes;
+    }
+
+    
+    struct Texture
+    {
+        public ulong m_iOffsetTextreDatas;
+        public int m_iWidth;
+        public int m_iHeight;
+    }
+
+    
+    struct Material
+    {
+        public Texture m_DiffuseTexture;
+        public Texture m_SpecularTexture;
+        public Texture m_NormalTexture;
+    }
+
     struct BVHObject
     {
-        public Int32 m_iType;
+        public int m_iType;
         public List<BVHNode> m_listBVHNodes;
     }
 
@@ -123,11 +160,19 @@ namespace OpenCLRenderer
                         throw new Exception(strBuildInfo);
                     }
 
+                    // VertexShader
                     clDevice.kernelVertexShader = Cl.CreateKernel(program, "Main_VertexShader", out error);
                     if (error != ErrorCode.Success)
                     {
                         throw new Exception("Cl.CreateKernel: Main_VertexShader");
                     }
+
+                    // RefitTree
+                    //clDevice.kernelRefitTree = Cl.CreateKernel(program, "Main_RefitTree", out error);
+                    //if (error != ErrorCode.Success)
+                    //{
+                    //    throw new Exception("Cl.CreateKernel: Main_RefitTree");
+                    //}
 
                     clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
                 }
@@ -135,10 +180,10 @@ namespace OpenCLRenderer
         }
 
         // Matrix
-        public Int32 GenMatrix()
+        public int GenMatrix()
         {
             m_mtxMutex.WaitOne();
-            Int32 iId = m_listMatrices.Count;
+            int iId = m_listMatrices.Count;
 
             Matrix newMatrix = new Matrix();
 
@@ -147,7 +192,7 @@ namespace OpenCLRenderer
             return iId;
         }
 
-        public void SetMatrix(Int32 iId, mat4 mMatrix)
+        public void SetMatrix(int iId, mat4 mMatrix)
         {
             m_mtxMutex.WaitOne();
             Matrix newMatrix = new Matrix();
@@ -167,10 +212,10 @@ namespace OpenCLRenderer
         }
 
         // Material
-        public Int32 GenMaterial()
+        public int GenMaterial()
         {
             m_mtxMutex.WaitOne();
-            Int32 iId = m_listMaterials.Count;
+            int iId = m_listMaterials.Count;
 
             Material newMaterial = new Material();
 
@@ -179,7 +224,7 @@ namespace OpenCLRenderer
             return iId;
         }
 
-        public void SetMaterial(Int32 iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
+        public void SetMaterial(int iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
         {
             m_mtxMutex.WaitOne();
             Material newMaterial = new Material();
@@ -202,9 +247,9 @@ namespace OpenCLRenderer
             Texture newTexture = new Texture();
             newTexture.m_iWidth = bitmap.Width;
             newTexture.m_iHeight = bitmap.Height;
-            newTexture.m_iOffsetTextreDatas = (UInt64)m_listTexturesData.Count;
+            newTexture.m_iOffsetTextreDatas = (uint)m_listTexturesData.Count;
             // copy data
-            Int32 iSize = newTexture.m_iWidth * newTexture.m_iHeight * 4;
+            int iSize = newTexture.m_iWidth * newTexture.m_iHeight * 4;
             byte[] datas = new byte[iSize];
             Marshal.Copy(bitmapData.Scan0, datas, 0, iSize);
             m_listTexturesData.AddRange(datas);
@@ -223,28 +268,28 @@ namespace OpenCLRenderer
         {
             float fMinDistance = float.MaxValue;
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_A.m_V, tri2.m_A.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_A.m_V, tri2.m_B.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_A.m_V, tri2.m_C.m_V));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_B.m_V, tri2.m_A.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_B.m_V, tri2.m_B.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_B.m_V, tri2.m_C.m_V));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_C.m_V, tri2.m_A.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_C.m_V, tri2.m_B.m_V));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(tri1.m_C.m_V, tri2.m_C.m_V));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
             return fMinDistance;
         }
 
         static float GetDistance_BBox_BBox(BBox bbox1, BBox bbox2)
         {
-            vec3 center1 = (bbox1.min + bbox1.max) / 2.0f;
-            vec3 center2 = (bbox2.min + bbox2.max) / 2.0f;
+            vec3 center1 = (new vec3(bbox1.minx, bbox1.miny, bbox1.minz) + new vec3(bbox1.maxx, bbox1.maxy, bbox1.maxz)) / 2.0f;
+            vec3 center2 = (new vec3(bbox2.minx, bbox2.miny, bbox2.minz) + new vec3(bbox2.maxx, bbox2.maxy, bbox2.maxz)) / 2.0f;
 
-            vec3 halfSize1 = bbox1.max - center1;
-            vec3 halfSize2 = bbox2.max - center2;
+            vec3 halfSize1 = new vec3(bbox1.maxx, bbox1.maxy, bbox1.maxz) - center1;
+            vec3 halfSize2 = new vec3(bbox2.maxx, bbox2.maxy, bbox2.maxz) - center2;
 
             float x = Math.Abs(center2.x - center1.x) - halfSize1.x - halfSize2.x;
             float y = Math.Abs(center2.y - center1.y) - halfSize1.y - halfSize2.y;
@@ -264,55 +309,59 @@ namespace OpenCLRenderer
             float fMinY = float.MaxValue;
             float fMinZ = float.MaxValue;
 
-            fMinX = Math.Min(fMinX, tri1.m_A.m_V.x);
-            fMinX = Math.Min(fMinX, tri1.m_B.m_V.x);
-            fMinX = Math.Min(fMinX, tri1.m_C.m_V.x);
-            fMinX = Math.Min(fMinX, tri2.m_A.m_V.x);
-            fMinX = Math.Min(fMinX, tri2.m_B.m_V.x);
-            fMinX = Math.Min(fMinX, tri2.m_C.m_V.x);
+            fMinX = Math.Min(fMinX, tri1.m_A.m_Vx);
+            fMinX = Math.Min(fMinX, tri1.m_B.m_Vx);
+            fMinX = Math.Min(fMinX, tri1.m_C.m_Vx);
+            fMinX = Math.Min(fMinX, tri2.m_A.m_Vx);
+            fMinX = Math.Min(fMinX, tri2.m_B.m_Vx);
+            fMinX = Math.Min(fMinX, tri2.m_C.m_Vx);
 
-            fMinY = Math.Min(fMinY, tri1.m_A.m_V.y);
-            fMinY = Math.Min(fMinY, tri1.m_B.m_V.y);
-            fMinY = Math.Min(fMinY, tri1.m_C.m_V.y);
-            fMinY = Math.Min(fMinY, tri2.m_A.m_V.y);
-            fMinY = Math.Min(fMinY, tri2.m_B.m_V.y);
-            fMinY = Math.Min(fMinY, tri2.m_C.m_V.y);
+            fMinY = Math.Min(fMinY, tri1.m_A.m_Vy);
+            fMinY = Math.Min(fMinY, tri1.m_B.m_Vy);
+            fMinY = Math.Min(fMinY, tri1.m_C.m_Vy);
+            fMinY = Math.Min(fMinY, tri2.m_A.m_Vy);
+            fMinY = Math.Min(fMinY, tri2.m_B.m_Vy);
+            fMinY = Math.Min(fMinY, tri2.m_C.m_Vy);
 
-            fMinZ = Math.Min(fMinZ, tri1.m_A.m_V.z);
-            fMinZ = Math.Min(fMinZ, tri1.m_B.m_V.z);
-            fMinZ = Math.Min(fMinZ, tri1.m_C.m_V.z);
-            fMinZ = Math.Min(fMinZ, tri2.m_A.m_V.z);
-            fMinZ = Math.Min(fMinZ, tri2.m_B.m_V.z);
-            fMinZ = Math.Min(fMinZ, tri2.m_C.m_V.z);
+            fMinZ = Math.Min(fMinZ, tri1.m_A.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri1.m_B.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri1.m_C.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri2.m_A.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri2.m_B.m_Vz);
+            fMinZ = Math.Min(fMinZ, tri2.m_C.m_Vz);
 
             float fMaxX = float.MinValue;
             float fMaxY = float.MinValue;
             float fMaxZ = float.MinValue;
 
-            fMaxX = Math.Max(fMaxX, tri1.m_A.m_V.x);
-            fMaxX = Math.Max(fMaxX, tri1.m_B.m_V.x);
-            fMaxX = Math.Max(fMaxX, tri1.m_C.m_V.x);
-            fMaxX = Math.Max(fMaxX, tri2.m_A.m_V.x);
-            fMaxX = Math.Max(fMaxX, tri2.m_B.m_V.x);
-            fMaxX = Math.Max(fMaxX, tri2.m_C.m_V.x);
+            fMaxX = Math.Max(fMaxX, tri1.m_A.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri1.m_B.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri1.m_C.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri2.m_A.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri2.m_B.m_Vx);
+            fMaxX = Math.Max(fMaxX, tri2.m_C.m_Vx);
 
-            fMaxY = Math.Max(fMaxY, tri1.m_A.m_V.y);
-            fMaxY = Math.Max(fMaxY, tri1.m_B.m_V.y);
-            fMaxY = Math.Max(fMaxY, tri1.m_C.m_V.y);
-            fMaxY = Math.Max(fMaxY, tri2.m_A.m_V.y);
-            fMaxY = Math.Max(fMaxY, tri2.m_B.m_V.y);
-            fMaxY = Math.Max(fMaxY, tri2.m_C.m_V.y);
+            fMaxY = Math.Max(fMaxY, tri1.m_A.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri1.m_B.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri1.m_C.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri2.m_A.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri2.m_B.m_Vy);
+            fMaxY = Math.Max(fMaxY, tri2.m_C.m_Vy);
 
-            fMaxZ = Math.Max(fMaxZ, tri1.m_A.m_V.z);
-            fMaxZ = Math.Max(fMaxZ, tri1.m_B.m_V.z);
-            fMaxZ = Math.Max(fMaxZ, tri1.m_C.m_V.z);
-            fMaxZ = Math.Max(fMaxZ, tri2.m_A.m_V.z);
-            fMaxZ = Math.Max(fMaxZ, tri2.m_B.m_V.z);
-            fMaxZ = Math.Max(fMaxZ, tri2.m_C.m_V.z);
+            fMaxZ = Math.Max(fMaxZ, tri1.m_A.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri1.m_B.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri1.m_C.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri2.m_A.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri2.m_B.m_Vz);
+            fMaxZ = Math.Max(fMaxZ, tri2.m_C.m_Vz);
 
             BBox bbox = new BBox();
-            bbox.min = new vec3(fMinX, fMinY, fMinZ);
-            bbox.max = new vec3(fMaxX, fMaxY, fMaxZ);
+            bbox.minx = fMinX;
+            bbox.miny = fMinY;
+            bbox.minz = fMinZ;
+            bbox.maxx = fMaxX;
+            bbox.maxy = fMaxY;
+            bbox.maxz = fMaxZ;
 
             return bbox;
         }
@@ -323,52 +372,56 @@ namespace OpenCLRenderer
             float fMinY = float.MaxValue;
             float fMinZ = float.MaxValue;
 
-            fMinX = Math.Min(fMinX, bbox1.min.x);
-            fMinX = Math.Min(fMinX, bbox1.max.x);
-            fMinX = Math.Min(fMinX, bbox2.min.x);
-            fMinX = Math.Min(fMinX, bbox2.max.x);
+            fMinX = Math.Min(fMinX, bbox1.minx);
+            fMinX = Math.Min(fMinX, bbox1.maxx);
+            fMinX = Math.Min(fMinX, bbox2.minx);
+            fMinX = Math.Min(fMinX, bbox2.maxx);
 
-            fMinY = Math.Min(fMinY, bbox1.min.y);
-            fMinY = Math.Min(fMinY, bbox1.max.y);
-            fMinY = Math.Min(fMinY, bbox2.min.y);
-            fMinY = Math.Min(fMinY, bbox2.max.y);
+            fMinY = Math.Min(fMinY, bbox1.miny);
+            fMinY = Math.Min(fMinY, bbox1.maxy);
+            fMinY = Math.Min(fMinY, bbox2.miny);
+            fMinY = Math.Min(fMinY, bbox2.maxy);
 
-            fMinZ = Math.Min(fMinZ, bbox1.min.z);
-            fMinZ = Math.Min(fMinZ, bbox1.max.z);
-            fMinZ = Math.Min(fMinZ, bbox2.min.z);
-            fMinZ = Math.Min(fMinZ, bbox2.max.z);
+            fMinZ = Math.Min(fMinZ, bbox1.minz);
+            fMinZ = Math.Min(fMinZ, bbox1.maxz);
+            fMinZ = Math.Min(fMinZ, bbox2.minz);
+            fMinZ = Math.Min(fMinZ, bbox2.maxz);
 
             float fMaxX = float.MinValue;
             float fMaxY = float.MinValue;
             float fMaxZ = float.MinValue;
 
-            fMaxX = Math.Max(fMaxX, bbox1.min.x);
-            fMaxX = Math.Max(fMaxX, bbox1.max.x);
-            fMaxX = Math.Max(fMaxX, bbox2.min.x);
-            fMaxX = Math.Max(fMaxX, bbox2.max.x);
+            fMaxX = Math.Max(fMaxX, bbox1.minx);
+            fMaxX = Math.Max(fMaxX, bbox1.maxx);
+            fMaxX = Math.Max(fMaxX, bbox2.minx);
+            fMaxX = Math.Max(fMaxX, bbox2.maxx);
 
-            fMaxY = Math.Max(fMaxY, bbox1.min.y);
-            fMaxY = Math.Max(fMaxY, bbox1.max.y);
-            fMaxY = Math.Max(fMaxY, bbox2.min.y);
-            fMaxY = Math.Max(fMaxY, bbox2.max.y);
+            fMaxY = Math.Max(fMaxY, bbox1.miny);
+            fMaxY = Math.Max(fMaxY, bbox1.maxy);
+            fMaxY = Math.Max(fMaxY, bbox2.miny);
+            fMaxY = Math.Max(fMaxY, bbox2.maxy);
 
-            fMaxZ = Math.Max(fMaxZ, bbox1.min.z);
-            fMaxZ = Math.Max(fMaxZ, bbox1.max.z);
-            fMaxZ = Math.Max(fMaxZ, bbox2.min.z);
-            fMaxZ = Math.Max(fMaxZ, bbox2.max.z);
+            fMaxZ = Math.Max(fMaxZ, bbox1.minz);
+            fMaxZ = Math.Max(fMaxZ, bbox1.maxz);
+            fMaxZ = Math.Max(fMaxZ, bbox2.minz);
+            fMaxZ = Math.Max(fMaxZ, bbox2.maxz);
 
             BBox bbox = new BBox();
-            bbox.min = new vec3(fMinX, fMinY, fMinZ);
-            bbox.max = new vec3(fMaxX, fMaxY, fMaxZ);
+            bbox.minx = fMinX;
+            bbox.miny = fMinY;
+            bbox.minz = fMinZ;
+            bbox.maxx = fMaxX;
+            bbox.maxy = fMaxY;
+            bbox.maxz = fMaxZ;
 
             return bbox;
         }
 
-        public Int32 GenObject()
+        public int GenObject()
         {
             m_mtxMutex.WaitOne();
 
-            Int32 iId = m_listObjects.Count;
+            int iId = m_listObjects.Count;
             BVHObject newObject = new BVHObject();
             m_listObjects.Add(newObject);
 
@@ -377,7 +430,7 @@ namespace OpenCLRenderer
             return iId;
         }
 
-        public void SetObject(Int32 iId, BVHObject bvhObject)
+        public void SetObject(int iId, BVHObject bvhObject)
         {
             m_mtxMutex.WaitOne();
             m_listObjects[iId] = bvhObject;
@@ -393,9 +446,16 @@ namespace OpenCLRenderer
                 Triangle newTri = new Triangle();
 
                 Vertex vertexA = new Vertex();
-                vertexA.m_V = new vec3(matTransform * new vec4(oldTri.m_A.m_V, 1.0f));
-                vertexA.m_N = new vec3(matTransform * new vec4(oldTri.m_A.m_N, 0.0f));
-                vertexA.m_TC = new vec2(oldTri.m_A.m_TC);
+                vec3 AV = new vec3(matTransform * new vec4(oldTri.m_A.m_Vx, oldTri.m_A.m_Vy, oldTri.m_A.m_Vz, 1.0f));
+                vertexA.m_Vx = AV.x;
+                vertexA.m_Vy = AV.y;
+                vertexA.m_Vz = AV.z;
+                vec3 AN = new vec3(matTransform * new vec4(oldTri.m_A.m_Nx, oldTri.m_A.m_Ny, oldTri.m_A.m_Nz, 0.0f));
+                vertexA.m_Nx = AN.x;
+                vertexA.m_Ny = AN.y;
+                vertexA.m_Nz = AN.z;
+                vertexA.m_TCx = oldTri.m_A.m_TCx;
+                vertexA.m_TCy = oldTri.m_A.m_TCy;
                 vertexA.m_iNumMatrices = 0;
                 vertexA.m_iMatrixId1 = -1;
                 vertexA.m_fWeight1 = 0.0f;
@@ -405,9 +465,16 @@ namespace OpenCLRenderer
                 vertexA.m_fWeight3 = 0.0f;
 
                 Vertex vertexB = new Vertex();
-                vertexB.m_V = new vec3(matTransform * new vec4(oldTri.m_B.m_V, 1.0f));
-                vertexB.m_N = new vec3(matTransform * new vec4(oldTri.m_B.m_N, 0.0f));
-                vertexB.m_TC = new vec2(oldTri.m_B.m_TC);
+                vec3 BV = new vec3(matTransform * new vec4(oldTri.m_B.m_Vx, oldTri.m_B.m_Vy, oldTri.m_B.m_Vz, 1.0f));
+                vertexB.m_Vx = BV.x;
+                vertexB.m_Vy = BV.y;
+                vertexB.m_Vz = BV.z;
+                vec3 BN = new vec3(matTransform * new vec4(oldTri.m_B.m_Nx, oldTri.m_B.m_Ny, oldTri.m_B.m_Nz, 0.0f));
+                vertexB.m_Nx = BN.x;
+                vertexB.m_Ny = BN.y;
+                vertexB.m_Nz = BN.z;
+                vertexB.m_TCx = oldTri.m_B.m_TCx;
+                vertexB.m_TCy = oldTri.m_B.m_TCy;
                 vertexB.m_iNumMatrices = 0;
                 vertexB.m_iMatrixId1 = -1;
                 vertexB.m_fWeight1 = 0.0f;
@@ -417,9 +484,16 @@ namespace OpenCLRenderer
                 vertexB.m_fWeight3 = 0.0f;
 
                 Vertex vertexC = new Vertex();
-                vertexC.m_V = new vec3(matTransform * new vec4(oldTri.m_C.m_V, 1.0f));
-                vertexC.m_N = new vec3(matTransform * new vec4(oldTri.m_C.m_N, 0.0f));
-                vertexC.m_TC = new vec2(oldTri.m_C.m_TC);
+                vec3 CV = new vec3(matTransform * new vec4(oldTri.m_C.m_Vx, oldTri.m_C.m_Vy, oldTri.m_C.m_Vz, 1.0f));
+                vertexC.m_Vx = CV.x;
+                vertexC.m_Vy = CV.y;
+                vertexC.m_Vz = CV.z;
+                vec3 CN = new vec3(matTransform * new vec4(oldTri.m_C.m_Nx, oldTri.m_C.m_Ny, oldTri.m_C.m_Nz, 0.0f));
+                vertexC.m_Nx = CN.x;
+                vertexC.m_Ny = CN.y;
+                vertexC.m_Nz = CN.z;
+                vertexC.m_TCx = oldTri.m_C.m_TCx;
+                vertexC.m_TCy = oldTri.m_C.m_TCy;
                 vertexC.m_iNumMatrices = 0;
                 vertexC.m_iMatrixId1 = -1;
                 vertexC.m_fWeight1 = 0.0f;
@@ -442,7 +516,7 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             
             BVHObject newObject = new BVHObject();
-            newObject.m_iType = (Int32)BVHObjectType.Static;
+            newObject.m_iType = (int)BVHObjectType.Static;
             newObject.m_listBVHNodes = newBVH;
 
             m_mtxMutex.ReleaseMutex();
@@ -457,7 +531,7 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
 
             BVHObject newObject = new BVHObject();
-            newObject.m_iType = (Int32)BVHObjectType.Dynamic;
+            newObject.m_iType = (int)BVHObjectType.Dynamic;
             newObject.m_listBVHNodes = newBVH;
 
             m_mtxMutex.ReleaseMutex();
@@ -616,7 +690,7 @@ namespace OpenCLRenderer
             List<BVHNodeOffset> listBVHNodesOffsets = new List<BVHNodeOffset>();
             // all bvh one big list
             List<BVHNode> listAllBVHNodes = new List<BVHNode>();
-            List<Int32> listAllBVHNodesType = new List<Int32>();
+            List<int> listAllBVHNodesType = new List<int>();
 
             foreach (BVHObject bvhObject in m_listObjects)
             {
@@ -659,7 +733,7 @@ namespace OpenCLRenderer
                 clDevice.clInput_AllBVHNodes = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
 
-                clDevice.clOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.ReadOnly, listAllBVHNodes.Count, out error);
+                clDevice.clOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadWrite, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
 
@@ -674,17 +748,36 @@ namespace OpenCLRenderer
         {
             Parallel.For(0, m_listOpenCLDevices.Count, index =>
             {
+                ErrorCode error;
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
-                Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
-                Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
-                Cl.SetKernelArg(device.kernelVertexShader, 3, device.clOutput_AllBVHNodes);
+                int intPtrSize = Marshal.SizeOf(typeof(IntPtr));
+                Cl.SetKernelArg(device.kernelVertexShader, 0, new IntPtr(intPtrSize), device.clInput_AllBVHNodesType);
+                Cl.SetKernelArg(device.kernelVertexShader, 1, new IntPtr(intPtrSize), device.clInput_AllBVHNodes);
+                Cl.SetKernelArg(device.kernelVertexShader, 2, new IntPtr(intPtrSize), device.clInput_MatricesData);
+                Cl.SetKernelArg(device.kernelVertexShader, 3, new IntPtr(intPtrSize), device.clOutput_AllBVHNodes);
 
                 Event clevent;
-                IntPtr iCount = new IntPtr(device.m_iNumBVHNodes);
-                Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, null, new IntPtr[] { iCount }, null, 0, null, out clevent);
+                int iCount = device.m_iNumBVHNodes;
+                IntPtr intptrCount = new IntPtr(iCount);
+                error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
                 Cl.Finish(device.cmdQueue);
+                if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
+
+                // DEBUG
+                //BVHNode[] outzz = new BVHNode[iCount];
+                //error = Cl.EnqueueReadBuffer(device.cmdQueue, device.clOutput_AllBVHNodes, Bool.True, 0, iCount, outzz, 0, null, out clevent);
+                //Cl.Finish(device.cmdQueue);
+                //if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueReadBuffer"); }
+            });
+        }
+
+        public void RunRefitTree()
+        {
+            Parallel.For(0, m_listOpenCLDevices.Count, index =>
+            {
+                OpenCLDevice device = m_listOpenCLDevices[index];
+
             });
         }
 
@@ -711,6 +804,7 @@ namespace OpenCLRenderer
         public Device m_Device;
         public CommandQueue cmdQueue;
         public Kernel kernelVertexShader;
+        public Kernel kernelRefitTree;
 
         public string m_strName;
 
@@ -724,29 +818,9 @@ namespace OpenCLRenderer
         // objects
         public IMem<BVHNodeOffset> clInput_BVHNodeOffsetsData;
 
-        public Int32 m_iNumBVHNodes;
-        public IMem<Int32> clInput_AllBVHNodesType;
+        public int m_iNumBVHNodes;
+        public IMem<int> clInput_AllBVHNodesType;
         public IMem<BVHNode> clInput_AllBVHNodes;
         public IMem<BVHNode> clOutput_AllBVHNodes;
-    }
-
-    struct BVHNodeOffset
-    {
-        public Int32 m_iOffset;
-        public Int32 m_iNumBVHNodes;
-    }
-
-    struct Texture
-    {
-        public UInt64 m_iOffsetTextreDatas;
-        public Int32 m_iWidth;
-        public Int32 m_iHeight;
-    }
-
-    struct Material
-    {
-        public Texture m_DiffuseTexture;
-        public Texture m_SpecularTexture;
-        public Texture m_NormalTexture;
     }
 }

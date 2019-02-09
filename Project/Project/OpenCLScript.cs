@@ -28,21 +28,21 @@ typedef struct
 }
 Matrix4x4;
 
-float3 ToFloat3(float4 v)
+float3 ToFloat3(float x, float y, float z)
 {
     float3 ret;
-    ret.x = v.x;
-    ret.y = v.y;
-    ret.z = v.z;
+    ret.x = x;
+    ret.y = y;
+    ret.z = z;
     return ret;
 }
 
-float4 ToFloat4(float3 v, float w)
+float4 ToFloat4(float x, float y, float z, float w)
 {
     float4 ret;
-    ret.x = v.x;
-    ret.y = v.y;
-    ret.z = v.z;
+    ret.x = x;
+    ret.y = y;
+    ret.z = z;
     ret.w = w;
     return ret;
 }
@@ -51,7 +51,7 @@ float4 Mult_Matrix4x4Float3(Matrix4x4 T, float3 v, float w)
 {
     float4 ret;
 
-    float4 v1 = ToFloat4(v, w);
+    float4 v1 = ToFloat4(v.x, v.y, v.z, w);
 
     ret.x = dot(T.row0, v1);
     ret.y = dot(T.row1, v1);
@@ -350,9 +350,14 @@ Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
 
 typedef struct
 {
-    float3 v;
-    float3 n;
-    float2 tc;
+    float vx;
+    float vy;
+    float vz;
+    float nx;
+    float ny;
+    float nz;
+    float tx;
+    float ty;
     int numMatrices;
     int matrixId1;
     int matrixId2;
@@ -374,8 +379,12 @@ Triangle;
 
 typedef struct
 {
-    float3 min;
-    float3 max;
+    float minx;
+    float miny;
+    float minz;
+    float maxx;
+    float maxy;
+    float maxz;
 }
 BBox;
 
@@ -402,6 +411,8 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
     Vertex out;
     
+    out.tx          = in.tx;
+    out.ty          = in.ty;
     out.numMatrices = in.numMatrices;
     out.matrixId1   = in.matrixId1;
     out.matrixId2   = in.matrixId2;
@@ -416,26 +427,45 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
     }
     else if (in.numMatrices == 1) 
     {
-        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f));
-        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f));
+        float4 v = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+        out.vx = v.x;
+        out.vy = v.y;
+        out.vz = v.z;
+
+        float4 n = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        out.nx = n.x;
+        out.ny = n.y;
+        out.nz = n.z;
     }
     else if (in.numMatrices == 2)
     {
-        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.v, 1.0f));
+        float4 v1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+        float4 v2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+        out.vx = v1.x + v2.x;
+        out.vy = v1.y + v2.y;
+        out.vz = v1.z + v2.z;
     
-        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.n, 0.0f));
+        float4 n1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        float4 n2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        out.nx = n1.x + n2.x;
+        out.ny = n1.y + n2.y;
+        out.nz = n1.z + n2.z;
     }
     else if (in.numMatrices == 3)
     {
-        out.v = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.v, 1.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.v, 1.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), in.v, 1.0f));
-    
-        out.n = ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), in.n, 0.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), in.n, 0.0f)) 
-              + ToFloat3(Mult_Matrix4x4Float3(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), in.n, 0.0f));
+        float4 v1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f)); 
+        float4 v2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+        float4 v3 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+        out.vx = v1.x + v2.x + v3.x;
+        out.vy = v1.y + v2.y + v3.y;
+        out.vx = v1.z + v2.z + v3.z;
+        
+        float4 n1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        float4 n2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        float4 n3 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
+        out.nx = n1.x + n2.x + n3.x;
+        out.ny = n1.y + n2.y + n3.y;
+        out.nz = n1.z + n2.z + n3.z;
     }
 
     return out;
@@ -448,7 +478,7 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
     BVHNodeType bvhNodeType = in_BVHNodeTypes[id];
     BVHNode inBVHNode = in_BVHNodes[id];
     BVHNode outBVHNode;
-
+    
     if (Static == bvhNodeType.type) 
     {
         outBVHNode = inBVHNode;
@@ -457,10 +487,14 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
     {
         if (-1 == inBVHNode.left && -1 == inBVHNode.right)
         {
+            outBVHNode = inBVHNode;
             outBVHNode.triangle.a = VertexShader(inBVHNode.triangle.a, in_Matrices);
             outBVHNode.triangle.b = VertexShader(inBVHNode.triangle.b, in_Matrices);
             outBVHNode.triangle.c = VertexShader(inBVHNode.triangle.c, in_Matrices);
-            outBVHNode.triangle.materialId = inBVHNode.triangle.materialId;
+        }
+        else
+        {
+            outBVHNode = inBVHNode;
         }
     }
 
