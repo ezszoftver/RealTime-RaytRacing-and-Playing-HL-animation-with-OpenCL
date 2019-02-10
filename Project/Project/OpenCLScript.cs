@@ -390,6 +390,7 @@ BBox;
 
 typedef struct
 {
+    int id;
     Triangle triangle;
     BBox bbox;
     int left;
@@ -574,7 +575,7 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
     return out;
 }
 
-__kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *out_BVHNodes)
+__kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *inout_BVHNodes)
 {
     int id = get_global_id(0);
 
@@ -612,127 +613,29 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
         }
     }
 
-    out_BVHNodes[id] = outBVHNode;
+    inout_BVHNodes[id] = outBVHNode;
 }
 
-__kernel void Main_RefitTree_Level2()
+__kernel void Main_RefitTree_LevelX(__global BVHNode *in_BVHNodes, __global BVHNode *inout_allBVHNodes)
 {
+    int id = get_global_id(0);
 
-}
+    BVHNode node = in_BVHNodes[id];
 
-__kernel void Main_RefitTree_Level3()
-{
-
-}
-
-__kernel void Main_RefitTree_Level4()
-{
-
-}
-
-__kernel void Main_RefitTree_Level5()
-{
-
-}
-
-__kernel void Main_RefitTree_Level6()
-{
-
-}
-
-__kernel void Main_RefitTree_Level7()
-{
-
-}
-
-__kernel void Main_RefitTree_Level8()
-{
-
-}
-
-__kernel void Main_RefitTree_Level9()
-{
-
-}
-
-__kernel void Main_RefitTree_Level10()
-{
-
-}
-
-__kernel void Main_RefitTree_Level11()
-{
-
-}
-
-__kernel void Main_RefitTree_Level12()
-{
-
-}
-
-__kernel void Main_RefitTree_Level13()
-{
-
-}
-
-__kernel void Main_RefitTree_Level14()
-{
-
-}
-
-__kernel void Main_RefitTree_Level15()
-{
-
-}
-
-__kernel void Main_RefitTree_Level16()
-{
-
-}
-
-__kernel void Main_RefitTree_Level17()
-{
-
-}
-
-__kernel void Main_RefitTree_Level18()
-{
-
-}
-
-__kernel void Main_RefitTree_Level19()
-{
-
-}
-
-__kernel void Main_RefitTree_Level20()
-{
-
-}
-
-__kernel void Main_RefitTree_Level21()
-{
-
-}
-
-__kernel void Main_RefitTree_Level22()
-{
-
-}
-
-__kernel void Main_RefitTree_Level23()
-{
-
-}
-
-__kernel void Main_RefitTree_Level24()
-{
-
-}
-
-__kernel void Main_RefitTree_Level25()
-{
-
+    if (-1 != node.left && -1 != node.right)
+    {
+        BBox bbox1 = inout_allBVHNodes[node.left].bbox;
+        BBox bbox2 = inout_allBVHNodes[node.right].bbox;
+        inout_allBVHNodes[node.id].bbox = GenBBox_BBoxBBox(bbox1, bbox2);
+    }
+    else if (-1 != node.left)
+    {
+        inout_allBVHNodes[node.id].bbox = inout_allBVHNodes[node.left].bbox;
+    }
+    else if (-1 != node.right)
+    {
+        inout_allBVHNodes[node.id].bbox = inout_allBVHNodes[node.right].bbox;
+    }
 }
 
 ";
