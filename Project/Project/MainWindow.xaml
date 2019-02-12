@@ -11,7 +11,7 @@
         WindowStartupLocation="CenterScreen"
         Loaded="Window_Loaded"
         Unloaded="Window_Unloaded">
-    <Grid Background="LightGreen">
+    <Grid Background="LightGreen" SizeChanged="Grid_SizeChanged">
         
     </Grid>
 </Window>

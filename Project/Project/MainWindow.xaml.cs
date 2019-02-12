@@ -26,15 +26,15 @@ namespace Project
         public MainWindow()
         {
             InitializeComponent();
+
+            m_Scene = new OpenCLRenderer.Scene();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            m_Scene = new OpenCLRenderer.Scene();
-
             Mutex mtxMutex = new Mutex();
 
-            Parallel.For(0, 100, index =>
+            Parallel.For(0, 1, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
@@ -195,5 +195,12 @@ namespace Project
         DateTime m_CurrentTime;
         float m_fDeltaTime;
         float m_fSec;
+
+        private void Grid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            int iWidth = (int)(sender as Grid).ActualWidth;
+            int iHeight = (int)(sender as Grid).ActualHeight;
+            m_Scene.Resize(iWidth, iHeight);
+        }
     }
 }

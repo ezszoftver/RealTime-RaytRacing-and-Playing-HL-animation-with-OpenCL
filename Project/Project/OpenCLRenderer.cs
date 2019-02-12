@@ -76,14 +76,6 @@ namespace OpenCLRenderer
         public vec4 m_Column3;
     }
 
-    
-    //struct BVHNodeOffset
-    //{
-    //    public int m_iOffset;
-    //    public int m_iNumBVHNodes;
-    //}
-
-    
     struct Texture
     {
         public ulong m_iOffsetTextreDatas;
@@ -104,6 +96,17 @@ namespace OpenCLRenderer
         public int m_iType;
         public List<BVHNode> m_listBVHNodes;
         public List< List<BVHNode> > m_LevelXBVHs;
+    }
+
+    struct Ray
+    {
+        public float posx;
+        public float posy;
+        public float posz;
+        public float dirx;
+        public float diry;
+        public float dirz;
+        public float length;
     }
 
     class Scene
@@ -149,6 +152,8 @@ namespace OpenCLRenderer
             {
                 throw new Exception("Scene: Not find OpenCL GPU device!");
             }
+
+            Resize(32, 32);
 
             // buils cl script
             foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
@@ -814,14 +819,17 @@ namespace OpenCLRenderer
                 foreach (BVHNode node in bvhObject.m_listBVHNodes) { listAllBVHNodesType.Add(bvhObject.m_iType); }
 
                 // Global level N
-                LevelXList_Resize(listAllLevelXBVHs, bvhObject.m_LevelXBVHs.Count);
-                for (int i = 0; i < bvhObject.m_LevelXBVHs.Count; i++)
+                if (bvhObject.m_iType == (int)BVHObjectType.Dynamic)
                 {
-                    List<BVHNode> listGlobalLevelN = ConvertBVHListToGlobal(bvhObject.m_LevelXBVHs[i], iOffset);
-                    listAllLevelXBVHs[i].AddRange(listGlobalLevelN);
+                    LevelXList_Resize(listAllLevelXBVHs, bvhObject.m_LevelXBVHs.Count);
+                    for (int i = 0; i < bvhObject.m_LevelXBVHs.Count; i++)
+                    {
+                        List<BVHNode> listGlobalLevelN = ConvertBVHListToGlobal(bvhObject.m_LevelXBVHs[i], iOffset);
+                        listAllLevelXBVHs[i].AddRange(listGlobalLevelN);
 
-                    // size
-                    m_listRefitTree_LevelXSizes.Add(listGlobalLevelN.Count);
+                        // size
+                        m_listRefitTree_LevelXSizes.Add(listGlobalLevelN.Count);
+                    }
                 }
             }
 
@@ -985,6 +993,33 @@ namespace OpenCLRenderer
             return bbox;
         }
 
+        public void Resize(int iWidth, int iHeight)
+        {
+            m_mtxMutex.WaitOne();
+
+            Parallel.For(0, m_listOpenCLDevices.Count, index =>
+            {
+                OpenCLDevice clDevice = m_listOpenCLDevices[index];
+
+                clDevice.m_iWidth = iWidth;
+                clDevice.m_iHeight = iHeight;
+
+                ErrorCode error;
+
+                if (null != clDevice.clInputOutput_Rays)
+                {
+                    Cl.ReleaseMemObject(clDevice.clInputOutput_Rays);
+                    clDevice.clInputOutput_Rays = null;
+                }
+
+                int iSize = clDevice.m_iWidth * clDevice.m_iHeight;
+                clDevice.clInputOutput_Rays = Cl.CreateBuffer<Ray>(clDevice.m_Context, MemFlags.ReadWrite, iSize, out error);
+                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInputOutput_Rays"); }
+            });
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
         enum BVHObjectType
         {
             Static = 1,
@@ -1011,6 +1046,8 @@ namespace OpenCLRenderer
         public Kernel KernelRefitTree_LevelX;
         
         public string m_strName;
+        public int m_iWidth;
+        public int m_iHeight;
 
         // textures
         public IMem<Material> clInput_Materials;
@@ -1019,15 +1056,11 @@ namespace OpenCLRenderer
         // matrices
         public IMem<Matrix> clInput_MatricesData;
 
-        // objects
-        //public int m_iNumObjects;
-        //public IMem<BVHNodeOffset> clInput_BVHNodeOffsetsData;
-
         public int m_iNumBVHNodes;
         public IMem<int> clInput_AllBVHNodesType;
         public IMem<BVHNode> clInput_AllBVHNodes;
         public IMem<BVHNode> clInputOutput_AllBVHNodes;
         public List< IMem<BVHNode> > listCLInput_RefitTree_LevelX = new List< IMem<BVHNode> >();
-        //public List< IMem<int> > listCLInput_RefitTree_LevelXOffsets = new List< IMem<int> >();
+        public IMem<Ray> clInputOutput_Rays = null;
     }
 }
