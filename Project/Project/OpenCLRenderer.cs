@@ -912,6 +912,7 @@ namespace OpenCLRenderer
                 error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
                 Cl.Finish(device.cmdQueue);
                 if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
+                Cl.ReleaseEvent(clevent);
             });
 
             m_mtxMutex.ReleaseMutex();
@@ -926,12 +927,13 @@ namespace OpenCLRenderer
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
                 ErrorCode error;
-                Event clevent;
-
+                
                 for (int i = 0; i < device.listCLInput_RefitTree_LevelX.Count; i++)
                 {
                     int iCount = m_listRefitTree_LevelXSizes[i];
                     if (iCount == 0) { continue; }
+
+                    Event clevent;
 
                     IMem<BVHNode> clInput_RefitTree_LevelX = device.listCLInput_RefitTree_LevelX[i];
 
@@ -942,6 +944,7 @@ namespace OpenCLRenderer
                     error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRefitTree_LevelX, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
                     Cl.Finish(device.cmdQueue);
                     if (error != ErrorCode.Success) { throw new Exception("RunRefitTree: Cl.EnqueueNDRangeKernel"); }
+                    Cl.ReleaseEvent(clevent);
                 }
             });
 
