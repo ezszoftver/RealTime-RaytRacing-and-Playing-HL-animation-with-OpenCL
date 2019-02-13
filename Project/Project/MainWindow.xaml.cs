@@ -176,6 +176,7 @@ namespace Project
 
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTree();
+            m_Scene.SetCamera(new vec3(0, 0, 10), new vec3(0, 0, 0), new vec3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
         }
 
         private void Window_Unloaded(object sender, RoutedEventArgs e)

@@ -12,7 +12,14 @@ using System.Threading.Tasks;
 
 namespace OpenCLRenderer
 {
-    
+
+    struct Vector3
+    {
+        public float m_X;
+        public float m_Y;
+        public float m_Z;
+    }
+
     struct Vertex
     {
         public float m_Vx;
@@ -176,6 +183,13 @@ namespace OpenCLRenderer
 
                     // RefitTree
                     clDevice.KernelRefitTree_LevelX = Cl.CreateKernel(program, "Main_RefitTree_LevelX", out error);
+                    if (error != ErrorCode.Success)
+                    {
+                        throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
+                    }
+
+                    // CameraRays
+                    clDevice.KernelCameraRays = Cl.CreateKernel(program, "Main_CameraRays", out error);
                     if (error != ErrorCode.Success)
                     {
                         throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
@@ -951,6 +965,57 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
+        public void SetCamera(vec3 pos, vec3 at, vec3 up, float angle, float zfar)
+        {
+            m_mtxMutex.WaitOne();
+
+            Parallel.For(0, m_listOpenCLDevices.Count, index =>
+            {
+                OpenCLDevice device = m_listOpenCLDevices[index];
+
+                // pos
+                Vector3 inPos;
+                inPos.m_X = pos.x;
+                inPos.m_Y = pos.y;
+                inPos.m_Z = pos.z;
+
+                // at
+                Vector3 inAt;
+                inAt.m_X = at.x;
+                inAt.m_Y = at.y;
+                inAt.m_Z = at.z;
+
+                // at
+                Vector3 inUp;
+                inUp.m_X = up.x;
+                inUp.m_Y = up.y;
+                inUp.m_Z = up.z;
+
+                ErrorCode error;
+                Event clevent;
+
+                IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
+                IntPtr floatSize = new IntPtr(Marshal.SizeOf<float>());
+                IntPtr Vector3Size = new IntPtr(Marshal.SizeOf<Vector3>());
+
+                Cl.SetKernelArg(device.KernelCameraRays, 0, Vector3Size, inPos);
+                Cl.SetKernelArg(device.KernelCameraRays, 1, Vector3Size, inAt);
+                Cl.SetKernelArg(device.KernelCameraRays, 2, Vector3Size, inUp);
+                Cl.SetKernelArg(device.KernelCameraRays, 3, floatSize, angle);
+                Cl.SetKernelArg(device.KernelCameraRays, 4, floatSize, zfar);
+                Cl.SetKernelArg(device.KernelCameraRays, 5, intSize, device.m_iWidth);
+                Cl.SetKernelArg(device.KernelCameraRays, 6, intSize, device.m_iHeight);
+                Cl.SetKernelArg(device.KernelCameraRays, 7, device.clInputOutput_Rays);
+
+                error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelCameraRays, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(device.m_iWidth), new IntPtr(device.m_iHeight) }, null, 0, null, out clevent);
+                Cl.Finish(device.cmdQueue);
+                if (error != ErrorCode.Success) { throw new Exception("KernelCameraRays: Cl.EnqueueNDRangeKernel"); }
+                Cl.ReleaseEvent(clevent);
+            });
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
         static BBox GenBBox(Triangle tri)
         {
             float fMinX = float.MaxValue;
@@ -1047,7 +1112,8 @@ namespace OpenCLRenderer
         public CommandQueue cmdQueue;
         public Kernel kernelVertexShader;
         public Kernel KernelRefitTree_LevelX;
-        
+        public Kernel KernelCameraRays;
+
         public string m_strName;
         public int m_iWidth;
         public int m_iHeight;

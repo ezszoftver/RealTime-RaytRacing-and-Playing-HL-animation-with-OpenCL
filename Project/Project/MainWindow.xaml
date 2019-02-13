@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Project"
         mc:Ignorable="d"
         Title="" 
-        Width="720" Height="480"
+        Width="512" Height="512"
         MinWidth="100" MinHeight="100"
         WindowStartupLocation="CenterScreen"
         Loaded="Window_Loaded"
