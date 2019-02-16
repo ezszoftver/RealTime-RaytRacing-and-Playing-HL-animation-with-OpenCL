@@ -82,7 +82,7 @@ namespace Project
             UInt32 material_id = 0;
             string mtllib = "";
 
-            NumberFormatInfo formatInfo = new CultureInfo("en-EN").NumberFormat;
+            NumberFormatInfo formatInfo = CultureInfo.CreateSpecificCulture("en-US").NumberFormat;
 
             foreach (string line in lines) {
                 string[] words = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
