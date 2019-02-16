@@ -1,6 +1,8 @@
 ﻿using GlmSharp;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -177,6 +179,10 @@ namespace Project
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTree();
             m_Scene.SetCamera(new vec3(0, 0, 10), new vec3(0, 0, 0), new vec3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
+            m_Scene.RunRayShader();
+
+            Bitmap bitmap = m_Scene.GetBitmap();
+            image.Source = BitmapToImageSource(bitmap);
         }
 
         private void Window_Unloaded(object sender, RoutedEventArgs e)
@@ -197,10 +203,29 @@ namespace Project
         float m_fDeltaTime;
         float m_fSec;
 
-        private void Grid_SizeChanged(object sender, SizeChangedEventArgs e)
+        BitmapImage BitmapToImageSource(Bitmap bitmap)
         {
-            int iWidth = (int)(sender as Grid).ActualWidth;
-            int iHeight = (int)(sender as Grid).ActualHeight;
+            MemoryStream memory = new MemoryStream();
+            bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+            memory.Position = 0;
+
+            BitmapImage bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.DecodePixelWidth = bitmap.Width;
+            bitmapImage.DecodePixelHeight = bitmap.Height;
+            bitmapImage.StreamSource = memory;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+
+            return bitmapImage;
+        }
+
+        private void Image_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (null == m_Scene) { return; }
+
+            int iWidth = (int)image.ActualWidth;
+            int iHeight = (int)image.ActualHeight;
             m_Scene.Resize(iWidth, iHeight);
         }
     }

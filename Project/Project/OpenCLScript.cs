@@ -418,7 +418,6 @@ typedef struct
 }
 BVHNode;
 
-
 #define Static  1
 #define Dynamic 2
 
@@ -668,7 +667,7 @@ float3 RotateAxisAngle(float3 axis, float3 v, float theta)
     return rotated;
 }
 
-__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, float in_Angle, float in_ZFar, int in_Width, int in_Height, __global Ray *inout_Rays)
+__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float stepAngle, float in_Angle, float in_ZFar, int in_Width, int in_Height, int origox, int origoy, __global Ray *inout_Rays)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -677,10 +676,9 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, floa
 
     float3 pos = ToFloat3(in_Pos.x, in_Pos.y, in_Pos.z);
     float3 at = ToFloat3(in_At.x, in_At.y, in_At.z);
-    float3 up = normalize(ToFloat3(in_Up.x, in_Up.y, in_Up.z));
-    float3 dir = normalize(at - pos);
-    float3 right = normalize(cross(dir, up));
-    float stepAngle = in_Angle / ((float)in_Height / 2.0f);
+    float3 up = ToFloat3(in_Up.x, in_Up.y, in_Up.z);
+    float3 dir = ToFloat3(in_Dir.x, in_Dir.y, in_Dir.z);
+    float3 right = ToFloat3(in_Right.x, in_Right.y, in_Right.z);
 
     Ray ray;
     
@@ -688,25 +686,39 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, floa
     ray.posy = pos.y;
     ray.posz = pos.z;
 
-    int origox = in_Width / 2;
-    int origoy = in_Height / 2;
-
     int diffx = pixelx - origox;
     int diffy = pixely - origoy;
     
     float thetax = stepAngle * (float)diffx;
     float thetay = stepAngle * (float)diffy;
 
-    float3 dir1 = normalize(RotateAxisAngle(up, dir, thetax));
-    float3 dir2 = normalize(RotateAxisAngle(right, dir1, thetay));
+    float3 rotateUp = normalize(RotateAxisAngle(up, dir, thetax));
+    float3 rotateUpAndRight = normalize(RotateAxisAngle(right, rotateUp, thetay));
     
-    ray.dirx = dir2.x;
-    ray.diry = dir2.y;
-    ray.dirz = dir2.z;
+    ray.dirx = rotateUpAndRight.x;
+    ray.diry = rotateUpAndRight.y;
+    ray.dirz = rotateUpAndRight.z;
     
     ray.length = in_ZFar;
 
     inout_Rays[id] = ray;
+}
+
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, int in_Width, int in_Height, __global unsigned char *out_Texture)
+{
+    int pixelx = get_global_id(0);
+    int pixely = get_global_id(1);
+    int id = (in_Width * pixely * 4) + (pixelx * 4);
+    
+    unsigned char red   = 255;
+    unsigned char green = 0;
+    unsigned char blue  = 0;
+    unsigned char alpha  = 255;
+
+    out_Texture[id + 0] = blue;
+    out_Texture[id + 1] = green;
+    out_Texture[id + 2] = red;
+    out_Texture[id + 3] = alpha;
 }
 
 ";
