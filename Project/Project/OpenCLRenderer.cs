@@ -118,7 +118,7 @@ namespace OpenCLRenderer
         public float length;
     }
 
-    class Scene
+    class Scene : IDisposable
     {
         public Scene()
         {
@@ -168,45 +168,48 @@ namespace OpenCLRenderer
             //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
             OpenCLDevice clDevice = m_listOpenCLDevices[0];
             {
-                using (OpenCL.Net.Program program = Cl.CreateProgramWithSource(clDevice.m_Context, 1, new[] { OpenCLScript.GetText() }, null, out error))
+                clDevice.m_Program = Cl.CreateProgramWithSource(clDevice.m_Context, 1, new[] { OpenCLScript.GetText() }, null, out error);
+                if (error != ErrorCode.Success)
                 {
-                    error = Cl.BuildProgram(program, 1, new[] { clDevice.m_Device }, string.Empty, null, IntPtr.Zero);
-                    if (Cl.GetProgramBuildInfo(program, clDevice.m_Device, ProgramBuildInfo.Status, out error).CastTo<BuildStatus>() != BuildStatus.Success)
-                    {
-                        string strBuildInfo = Cl.GetProgramBuildInfo(program, clDevice.m_Device, ProgramBuildInfo.Log, out error).ToString();
-                        throw new Exception(strBuildInfo);
-                    }
-
-                    // VertexShader
-                    clDevice.kernelVertexShader = Cl.CreateKernel(program, "Main_VertexShader", out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateKernel: Main_VertexShader");
-                    }
-
-                    // RefitTree
-                    clDevice.KernelRefitTree_LevelX = Cl.CreateKernel(program, "Main_RefitTree_LevelX", out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
-                    }
-
-                    // CameraRays
-                    clDevice.KernelCameraRays = Cl.CreateKernel(program, "Main_CameraRays", out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
-                    }
-
-                    // RayShader
-                    clDevice.KernelRayShader = Cl.CreateKernel(program, "Main_RayShader", out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        throw new Exception("Cl.CreateKernel: Main_RayShader");
-                    }
-
-                    clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
+                    throw new Exception("Cl.CreateProgramWithSource: OpenCLScript");
                 }
+
+                error = Cl.BuildProgram(clDevice.m_Program, 1, new[] { clDevice.m_Device }, string.Empty, null, IntPtr.Zero);
+                if (Cl.GetProgramBuildInfo(clDevice.m_Program, clDevice.m_Device, ProgramBuildInfo.Status, out error).CastTo<BuildStatus>() != BuildStatus.Success)
+                {
+                    string strBuildInfo = Cl.GetProgramBuildInfo(clDevice.m_Program, clDevice.m_Device, ProgramBuildInfo.Log, out error).ToString();
+                    throw new Exception(strBuildInfo);
+                }
+
+                // VertexShader
+                clDevice.kernelVertexShader = Cl.CreateKernel(clDevice.m_Program, "Main_VertexShader", out error);
+                if (error != ErrorCode.Success)
+                {
+                    throw new Exception("Cl.CreateKernel: Main_VertexShader");
+                }
+
+                // RefitTree
+                clDevice.KernelRefitTree_LevelX = Cl.CreateKernel(clDevice.m_Program, "Main_RefitTree_LevelX", out error);
+                if (error != ErrorCode.Success)
+                {
+                    throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
+                }
+
+                // CameraRays
+                clDevice.KernelCameraRays = Cl.CreateKernel(clDevice.m_Program, "Main_CameraRays", out error);
+                if (error != ErrorCode.Success)
+                {
+                    throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
+                }
+
+                // RayShader
+                clDevice.KernelRayShader = Cl.CreateKernel(clDevice.m_Program, "Main_RayShader", out error);
+                if (error != ErrorCode.Success)
+                {
+                    throw new Exception("Cl.CreateKernel: Main_RayShader");
+                }
+
+                clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
             }
         }
 
@@ -864,13 +867,16 @@ namespace OpenCLRenderer
                 ErrorCode error;
 
                 // texturak betoltese
+                if (null != clDevice.clInput_Materials) { Cl.ReleaseMemObject(clDevice.clInput_Materials); clDevice.clInput_Materials = null; }
                 clDevice.clInput_Materials = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMaterials.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Materials"); }
 
+                if (null != clDevice.clInput_TexturesData) { Cl.ReleaseMemObject(clDevice.clInput_TexturesData); clDevice.clInput_TexturesData = null; }
                 clDevice.clInput_TexturesData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listTexturesData.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: TexturesData"); }
 
                 // matrixok betoltese
+                if (null != clDevice.clInput_MatricesData) { Cl.ReleaseMemObject(clDevice.clInput_MatricesData); clDevice.clInput_MatricesData = null; }
                 clDevice.clInput_MatricesData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMatrices.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
 
@@ -878,6 +884,11 @@ namespace OpenCLRenderer
                 clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
 
                 // Global level N
+                foreach (IMem<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
+                {
+                    Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                }
+                clDevice.listCLInput_RefitTree_LevelX.Clear();
                 foreach (List<BVHNode> listLevelXBVHs in listAllLevelXBVHs)
                 {
                     // levels
@@ -885,16 +896,19 @@ namespace OpenCLRenderer
                     if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInput_RefitTree_LevelX"); }
                     clDevice.listCLInput_RefitTree_LevelX.Add(clInput_RefitTree_LevelX);
                 }
- 
+
                 // global types
+                if (null != clDevice.clInput_AllBVHNodesType) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType); clDevice.clInput_AllBVHNodesType = null; }
                 clDevice.clInput_AllBVHNodesType = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodesType.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodesType"); }
 
                 // start global nodes
+                if (null != clDevice.clInput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes); clDevice.clInput_AllBVHNodes = null; }
                 clDevice.clInput_AllBVHNodes = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
 
                 // calculating global types
+                if (null != clDevice.clInputOutput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes); clDevice.clInputOutput_AllBVHNodes = null; }
                 clDevice.clInputOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadWrite, listAllBVHNodes.ToArray(), out error);
                 if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
@@ -944,7 +958,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void RunRefitTree()
+        public void RunRefitTreeShader()
         {
             m_mtxMutex.WaitOne();
 
@@ -1209,6 +1223,58 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
+        public void Dispose()
+        {
+            m_mtxMutex.WaitOne();
+
+            m_listMaterials.Clear();
+            m_listTexturesData.Clear();
+            m_listMatrices.Clear();
+            m_listObjects.Clear();
+            m_listRefitTree_LevelXSizes.Clear();
+
+            // bufferek letrehozasa, device-onkent
+            //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
+            OpenCLDevice clDevice = m_listOpenCLDevices[0];
+            {
+                // texturak betoltese
+                if (null != clDevice.clInput_Materials) { Cl.ReleaseMemObject(clDevice.clInput_Materials); clDevice.clInput_Materials = null; }
+                
+                if (null != clDevice.clInput_TexturesData) { Cl.ReleaseMemObject(clDevice.clInput_TexturesData); clDevice.clInput_TexturesData = null; }
+                
+                // matrixok betoltese
+                if (null != clDevice.clInput_MatricesData) { Cl.ReleaseMemObject(clDevice.clInput_MatricesData); clDevice.clInput_MatricesData = null; }
+                
+                // Global level N
+                foreach (IMem<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
+                {
+                    Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                }
+                clDevice.listCLInput_RefitTree_LevelX.Clear();
+                
+                // global types
+                if (null != clDevice.clInput_AllBVHNodesType) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType); clDevice.clInput_AllBVHNodesType = null; }
+
+                // start global nodes
+                if (null != clDevice.clInput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes); clDevice.clInput_AllBVHNodes = null; }
+                
+                // calculating global types
+                if (null != clDevice.clInputOutput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes); clDevice.clInputOutput_AllBVHNodes = null; }
+
+                Cl.ReleaseKernel(clDevice.kernelVertexShader);
+                Cl.ReleaseKernel(clDevice.KernelRefitTree_LevelX);
+                Cl.ReleaseKernel(clDevice.KernelCameraRays);
+                Cl.ReleaseKernel(clDevice.KernelRayShader);
+                Cl.ReleaseCommandQueue(clDevice.cmdQueue);
+                Cl.ReleaseProgram(clDevice.m_Program);
+                Cl.ReleaseContext(clDevice.m_Context);
+            }
+
+            m_listOpenCLDevices.Clear();
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
         enum BVHObjectType
         {
             Static = 1,
@@ -1234,6 +1300,7 @@ namespace OpenCLRenderer
     class OpenCLDevice
     {
         public Context m_Context;
+        public Program m_Program;
         public Device m_Device;
         public CommandQueue cmdQueue;
         public Kernel kernelVertexShader;
@@ -1244,16 +1311,16 @@ namespace OpenCLRenderer
         public string m_strName;
         
         // textures
-        public IMem<Material> clInput_Materials;
-        public IMem<byte> clInput_TexturesData;
+        public IMem<Material> clInput_Materials = null;
+        public IMem<byte> clInput_TexturesData = null;
 
         // matrices
-        public IMem<Matrix> clInput_MatricesData;
+        public IMem<Matrix> clInput_MatricesData = null;
 
         public int m_iNumBVHNodes;
-        public IMem<int> clInput_AllBVHNodesType;
-        public IMem<BVHNode> clInput_AllBVHNodes;
-        public IMem<BVHNode> clInputOutput_AllBVHNodes;
+        public IMem<int> clInput_AllBVHNodesType = null;
+        public IMem<BVHNode> clInput_AllBVHNodes = null;
+        public IMem<BVHNode> clInputOutput_AllBVHNodes = null;
         public List< IMem<BVHNode> > listCLInput_RefitTree_LevelX = new List< IMem<BVHNode> >();
         public IMem<Ray> clInputOutput_Rays = null;
         public IMem<Color> clOutput_Texture = null;

@@ -11,7 +11,7 @@
         Title="" 
         WindowStartupLocation="CenterScreen"
         Loaded="Window_Loaded"
-        Unloaded="Window_Unloaded">
+        Closing="Window_Closing">
     <Grid>
         <Image x:Name="image" Stretch="Fill" SizeChanged="Image_SizeChanged"/>
     </Grid>

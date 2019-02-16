@@ -147,7 +147,7 @@ namespace Project
                 triangles.Clear();
                 objLoader.Release();
             });
-            
+
             m_Scene.Commit();
 
             m_Timer = new DispatcherTimer();
@@ -177,21 +177,12 @@ namespace Project
             }
 
             m_Scene.RunVertexShader();
-            m_Scene.RunRefitTree();
+            m_Scene.RunRefitTreeShader();
             m_Scene.SetCamera(new vec3(0, 0, 10), new vec3(0, 0, 0), new vec3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
             m_Scene.RunRayShader();
 
             Bitmap bitmap = m_Scene.GetBitmap();
             image.Source = BitmapToImageSource(bitmap);
-        }
-
-        private void Window_Unloaded(object sender, RoutedEventArgs e)
-        {
-            if (null != m_Timer)
-            {
-                m_Timer.Stop();
-                m_Timer = null;
-            }
         }
 
         OpenCLRenderer.Scene m_Scene = null;
@@ -227,6 +218,22 @@ namespace Project
             int iWidth = (int)image.ActualWidth;
             int iHeight = (int)image.ActualHeight;
             m_Scene.Resize(iWidth, iHeight);
+        }
+
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (null != m_Timer)
+            {
+                m_Timer.Stop();
+                m_Timer = null;
+            }
+
+            if (null != m_Scene)
+            {
+                m_Scene.Dispose();
+                m_Scene = null;
+            }
         }
     }
 }
