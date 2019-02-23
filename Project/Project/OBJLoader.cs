@@ -6,15 +6,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using GlmSharp;
+using OpenTK;
 
 namespace Project
 {
     class OBJLoader
     {
-        public List<vec3> vertices;
-        public List<vec3> normals;
-        public List<vec2> text_coords;
+        public List<Vector3> vertices;
+        public List<Vector3> normals;
+        public List<Vector2> text_coords;
 
         private Dictionary<string, UInt32> material_to_id;
         private Dictionary<string, string> material_to_texture;
@@ -67,9 +67,9 @@ namespace Project
 
         public OBJLoader()
         {
-            vertices = new List<vec3>();
-            normals = new List<vec3>();
-            text_coords = new List<vec2>();
+            vertices = new List<Vector3>();
+            normals = new List<Vector3>();
+            text_coords = new List<Vector2>();
             material_to_id = new Dictionary<string, UInt32>();
             material_to_texture = new Dictionary<string, string>();
             materials = new List<Material>();
@@ -92,18 +92,18 @@ namespace Project
                             break;
                         }
                     case ("v"): {
-                            vec3 v = new vec3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
+                            Vector3 v = new Vector3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
                             vertices.Add(v);
                             break;
                         }
                     case ("vn"):
                         {
-                            vec3 n = new vec3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
+                            Vector3 n = new Vector3(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo), float.Parse(words[3], formatInfo));
                             normals.Add(n);
                             break;
                         }
                     case ("vt"): {
-                            vec2 vt = new vec2(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo));
+                            Vector2 vt = new Vector2(float.Parse(words[1], formatInfo), float.Parse(words[2], formatInfo));
                             text_coords.Add(vt);
                             break;
                         }

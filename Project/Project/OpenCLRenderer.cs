@@ -1,21 +1,24 @@
-﻿using GlmSharp;
-using OpenCL.Net;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using System.Runtime.InteropServices;
+
+using OpenTK;
+using OpenTK.Graphics;
+using OpenTK.Graphics.OpenGL;
+using Cloo;
+using PixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
 
 namespace OpenCLRenderer
 {
-
-    struct Vector3
+    struct Float3
     {
         public float m_X;
         public float m_Y;
@@ -41,7 +44,6 @@ namespace OpenCLRenderer
         public float m_fWeight3;
     }
 
-    
     struct Triangle
     {
         public Vertex m_A;
@@ -50,7 +52,6 @@ namespace OpenCLRenderer
         public int m_iMaterialId;
     }
 
-    
     struct BBox
     {
         public float minx;
@@ -61,7 +62,6 @@ namespace OpenCLRenderer
         public float maxz;
     }
 
-    
     struct BVHNode
     {
         public int m_iId;
@@ -71,18 +71,27 @@ namespace OpenCLRenderer
         public int m_iRight;
     }
 
-    
     struct Matrix
     {
-        public vec4 m_Row0;
-        public vec4 m_Row1;
-        public vec4 m_Row2;
-        public vec4 m_Row3;
+        public float m11;
+        public float m12;
+        public float m13;
+        public float m14;
 
-        public vec4 m_Column0;
-        public vec4 m_Column1;
-        public vec4 m_Column2;
-        public vec4 m_Column3;
+        public float m21;
+        public float m22;
+        public float m23;
+        public float m24;
+
+        public float m31;
+        public float m32;
+        public float m33;
+        public float m34;
+
+        public float m41;
+        public float m42;
+        public float m43;
+        public float m44;
     }
 
     struct Texture
@@ -118,98 +127,87 @@ namespace OpenCLRenderer
         public float length;
     }
 
+    public static class Win32
+    {
+        [DllImport("opengl32.dll")]
+        public extern static IntPtr wglGetCurrentDC();
+    }
+
     class Scene : IDisposable
     {
-        public Scene()
+        
+        public Scene() { }
+
+        public void CreateDevice()
         {
-            ErrorCode error;
+            ComputePlatform[] platforms = ComputePlatform.Platforms.ToArray();
 
-            Platform[] platforms = Cl.GetPlatformIDs(out error);
-            if (error != ErrorCode.Success)
+            foreach (ComputePlatform platform in platforms)
             {
-                throw new Exception("Cl.GetPlatformIDs");
-            }
+                ComputeContextPropertyList properties = new ComputeContextPropertyList(platform);
 
-            foreach (Platform platform in platforms)
-            {
-                foreach (Device newDevice in Cl.GetDeviceIDs(platform, DeviceType.Gpu | DeviceType.Accelerator, out error))
+                //IntPtr curDC = Win32.wglGetCurrentDC();
+                //OpenTK.Graphics.IGraphicsContextInternal ctx = (OpenTK.Graphics.IGraphicsContextInternal)OpenTK.Graphics.GraphicsContext.CurrentContext;
+                //IntPtr raw_context_handle = ctx.Context.Handle;
+                //ComputeContextProperty p1 = new ComputeContextProperty(ComputeContextPropertyName.CL_GL_CONTEXT_KHR, raw_context_handle);
+                //ComputeContextProperty p2 = new ComputeContextProperty(ComputeContextPropertyName.CL_WGL_HDC_KHR, curDC);
+                //ComputeContextProperty p3 = new ComputeContextProperty(ComputeContextPropertyName.Platform, platform.Handle.Value);
+                //List<ComputeContextProperty> props = new List<ComputeContextProperty>() { p1, p2, p3 };
+                //ComputeContextPropertyList properties = new ComputeContextPropertyList(props);
+
+                
+
+                ComputeContext newContext = null;
+                try
                 {
-                    if (error != ErrorCode.Success) { continue; }
-                    if (m_listOpenCLDevices.Count > 0) { continue; }
-                    //if (Cl.GetDeviceInfo(newDevice, DeviceInfo.ImageSupport, out error).CastTo<Bool>() == Bool.False) { continue; }
-
-                    Context newContext = Cl.CreateContext(null, 1, new Device[] { newDevice }, null, IntPtr.Zero, out error);
-                    if (error != ErrorCode.Success)
-                    {
-                        continue;
-                    }
-
-                    InfoBuffer info = Cl.GetDeviceInfo(newDevice, DeviceInfo.Name, out error);
-                    // print name
-                    //System.Console.WriteLine(info.ToString());
-
-                    OpenCLDevice newOpenCLDevice = new OpenCLDevice();
-                    newOpenCLDevice.m_Context = newContext;
-                    newOpenCLDevice.m_Device = newDevice;
-                    newOpenCLDevice.m_strName = info.ToString();
-                    m_listOpenCLDevices.Add(newOpenCLDevice);
+                    
+                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
                 }
+                catch (Exception ex)
+                {
+                    ex.ToString();
+                    continue;
+                }
+
+                ComputeDevice[] devices = newContext.Devices.ToArray();
+
+                foreach (ComputeDevice device in devices)
+                {
+                    OpenCLDevice clDevice = new OpenCLDevice();
+
+                    clDevice.m_Context = newContext;
+                    clDevice.m_Device = device;
+
+                    clDevice.cmdQueue = new ComputeCommandQueue(clDevice.m_Context, clDevice.m_Device, ComputeCommandQueueFlags.None);
+
+                    clDevice.m_Program = new ComputeProgram(clDevice.m_Context, OpenCLScript.GetText());
+
+                    clDevice.m_Program.Build(null, null, null, IntPtr.Zero);
+
+                    // VertexShader
+                    clDevice.kernelVertexShader = clDevice.m_Program.CreateKernel("Main_VertexShader");
+
+                    // RefitTree
+                    clDevice.KernelRefitTree_LevelX = clDevice.m_Program.CreateKernel("Main_RefitTree_LevelX");
+
+                    // CameraRays
+                    clDevice.KernelCameraRays = clDevice.m_Program.CreateKernel("Main_CameraRays");
+
+                    // RayShader
+                    clDevice.KernelRayShader = clDevice.m_Program.CreateKernel("Main_RayShader");
+
+                    m_listOpenCLDevices.Add(clDevice);
+
+                    Resize(32, 32);
+                    return;
+                }
+
             }
 
             // have cl device ?
             if (0 == m_listOpenCLDevices.Count)
             {
                 throw new Exception("Scene: Not find OpenCL GPU device!");
-            }
-
-            Resize(32, 32);
-
-            // buils cl script
-            //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
-            OpenCLDevice clDevice = m_listOpenCLDevices[0];
-            {
-                clDevice.m_Program = Cl.CreateProgramWithSource(clDevice.m_Context, 1, new[] { OpenCLScript.GetText() }, null, out error);
-                if (error != ErrorCode.Success)
-                {
-                    throw new Exception("Cl.CreateProgramWithSource: OpenCLScript");
-                }
-
-                error = Cl.BuildProgram(clDevice.m_Program, 1, new[] { clDevice.m_Device }, string.Empty, null, IntPtr.Zero);
-                if (Cl.GetProgramBuildInfo(clDevice.m_Program, clDevice.m_Device, ProgramBuildInfo.Status, out error).CastTo<BuildStatus>() != BuildStatus.Success)
-                {
-                    string strBuildInfo = Cl.GetProgramBuildInfo(clDevice.m_Program, clDevice.m_Device, ProgramBuildInfo.Log, out error).ToString();
-                    throw new Exception(strBuildInfo);
-                }
-
-                // VertexShader
-                clDevice.kernelVertexShader = Cl.CreateKernel(clDevice.m_Program, "Main_VertexShader", out error);
-                if (error != ErrorCode.Success)
-                {
-                    throw new Exception("Cl.CreateKernel: Main_VertexShader");
-                }
-
-                // RefitTree
-                clDevice.KernelRefitTree_LevelX = Cl.CreateKernel(clDevice.m_Program, "Main_RefitTree_LevelX", out error);
-                if (error != ErrorCode.Success)
-                {
-                    throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
-                }
-
-                // CameraRays
-                clDevice.KernelCameraRays = Cl.CreateKernel(clDevice.m_Program, "Main_CameraRays", out error);
-                if (error != ErrorCode.Success)
-                {
-                    throw new Exception("Cl.CreateKernel: Main_RefitTree LevelX");
-                }
-
-                // RayShader
-                clDevice.KernelRayShader = Cl.CreateKernel(clDevice.m_Program, "Main_RayShader", out error);
-                if (error != ErrorCode.Success)
-                {
-                    throw new Exception("Cl.CreateKernel: Main_RayShader");
-                }
-
-                clDevice.cmdQueue = Cl.CreateCommandQueue(clDevice.m_Context, clDevice.m_Device, (CommandQueueProperties)0, out error);
             }
         }
 
@@ -226,20 +224,30 @@ namespace OpenCLRenderer
             return iId;
         }
 
-        public void SetMatrix(int iId, mat4 mMatrix)
+        public void SetMatrix(int iId, Matrix4 mMatrix)
         {
             m_mtxMutex.WaitOne();
             Matrix newMatrix = new Matrix();
 
-            newMatrix.m_Row0 = mMatrix.Row0;
-            newMatrix.m_Row1 = mMatrix.Row1;
-            newMatrix.m_Row2 = mMatrix.Row2;
-            newMatrix.m_Row3 = mMatrix.Row3;
+            newMatrix.m11 = mMatrix.M11;
+            newMatrix.m12 = mMatrix.M12;
+            newMatrix.m13 = mMatrix.M13;
+            newMatrix.m14 = mMatrix.M14;
 
-            newMatrix.m_Column0 = mMatrix.Column0;
-            newMatrix.m_Column1 = mMatrix.Column1;
-            newMatrix.m_Column2 = mMatrix.Column2;
-            newMatrix.m_Column3 = mMatrix.Column3;
+            newMatrix.m21 = mMatrix.M21;
+            newMatrix.m22 = mMatrix.M22;
+            newMatrix.m23 = mMatrix.M23;
+            newMatrix.m24 = mMatrix.M24;
+
+            newMatrix.m31 = mMatrix.M31;
+            newMatrix.m32 = mMatrix.M32;
+            newMatrix.m33 = mMatrix.M33;
+            newMatrix.m34 = mMatrix.M34;
+
+            newMatrix.m41 = mMatrix.M41;
+            newMatrix.m42 = mMatrix.M42;
+            newMatrix.m43 = mMatrix.M43;
+            newMatrix.m44 = mMatrix.M44;
 
             m_listMatrices[iId] = newMatrix;
             m_mtxMutex.ReleaseMutex();
@@ -302,32 +310,32 @@ namespace OpenCLRenderer
         {
             float fMinDistance = float.MaxValue;
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new Vector3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new Vector3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_A.m_Vx, tri1.m_A.m_Vy, tri1.m_A.m_Vz), new Vector3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new Vector3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new Vector3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_B.m_Vx, tri1.m_B.m_Vy, tri1.m_B.m_Vz), new Vector3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
-            fMinDistance = Math.Min(fMinDistance, vec3.Distance(new vec3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new vec3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new Vector3(tri2.m_A.m_Vx, tri2.m_A.m_Vy, tri2.m_A.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new Vector3(tri2.m_B.m_Vx, tri2.m_B.m_Vy, tri2.m_B.m_Vz)));
+            fMinDistance = Math.Min(fMinDistance, Vector3.Distance(new Vector3(tri1.m_C.m_Vx, tri1.m_C.m_Vy, tri1.m_C.m_Vz), new Vector3(tri2.m_C.m_Vx, tri2.m_C.m_Vy, tri2.m_C.m_Vz)));
 
             return fMinDistance;
         }
 
         static float GetDistance_BBox_BBox(BBox bbox1, BBox bbox2)
         {
-            vec3 center1 = (new vec3(bbox1.minx, bbox1.miny, bbox1.minz) + new vec3(bbox1.maxx, bbox1.maxy, bbox1.maxz)) / 2.0f;
-            vec3 center2 = (new vec3(bbox2.minx, bbox2.miny, bbox2.minz) + new vec3(bbox2.maxx, bbox2.maxy, bbox2.maxz)) / 2.0f;
+            Vector3 center1 = (new Vector3(bbox1.minx, bbox1.miny, bbox1.minz) + new Vector3(bbox1.maxx, bbox1.maxy, bbox1.maxz)) / 2.0f;
+            Vector3 center2 = (new Vector3(bbox2.minx, bbox2.miny, bbox2.minz) + new Vector3(bbox2.maxx, bbox2.maxy, bbox2.maxz)) / 2.0f;
 
-            vec3 halfSize1 = new vec3(bbox1.maxx, bbox1.maxy, bbox1.maxz) - center1;
-            vec3 halfSize2 = new vec3(bbox2.maxx, bbox2.maxy, bbox2.maxz) - center2;
+            Vector3 halfSize1 = new Vector3(bbox1.maxx, bbox1.maxy, bbox1.maxz) - center1;
+            Vector3 halfSize2 = new Vector3(bbox2.maxx, bbox2.maxy, bbox2.maxz) - center2;
 
-            float x = Math.Abs(center2.x - center1.x) - halfSize1.x - halfSize2.x;
-            float y = Math.Abs(center2.y - center1.y) - halfSize1.y - halfSize2.y;
-            float z = Math.Abs(center2.z - center1.z) - halfSize1.z - halfSize2.z;
+            float x = Math.Abs(center2.X - center1.X) - halfSize1.X - halfSize2.X;
+            float y = Math.Abs(center2.Y - center1.Y) - halfSize1.Y - halfSize2.Y;
+            float z = Math.Abs(center2.Z - center1.Z) - halfSize1.Z - halfSize2.Z;
 
             float fLength = (float)Math.Sqrt(x * x + y * y + z * z);
 
@@ -471,7 +479,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public BVHObject CreateStaticObject(List<Triangle> triangles, mat4 matTransform)
+        public BVHObject CreateStaticObject(List<Triangle> triangles, Matrix4 matTransform)
         {
             List<Triangle> newTriangles = new List<Triangle>();
 
@@ -480,14 +488,14 @@ namespace OpenCLRenderer
                 Triangle newTri = new Triangle();
 
                 Vertex vertexA = new Vertex();
-                vec3 AV = new vec3(matTransform * new vec4(oldTri.m_A.m_Vx, oldTri.m_A.m_Vy, oldTri.m_A.m_Vz, 1.0f));
-                vertexA.m_Vx = AV.x;
-                vertexA.m_Vy = AV.y;
-                vertexA.m_Vz = AV.z;
-                vec3 AN = new vec3(matTransform * new vec4(oldTri.m_A.m_Nx, oldTri.m_A.m_Ny, oldTri.m_A.m_Nz, 0.0f));
-                vertexA.m_Nx = AN.x;
-                vertexA.m_Ny = AN.y;
-                vertexA.m_Nz = AN.z;
+                Vector3 AV = new Vector3(matTransform * new Vector4(oldTri.m_A.m_Vx, oldTri.m_A.m_Vy, oldTri.m_A.m_Vz, 1.0f));
+                vertexA.m_Vx = AV.X;
+                vertexA.m_Vy = AV.Y;
+                vertexA.m_Vz = AV.Z;
+                Vector3 AN = new Vector3(matTransform * new Vector4(oldTri.m_A.m_Nx, oldTri.m_A.m_Ny, oldTri.m_A.m_Nz, 0.0f));
+                vertexA.m_Nx = AN.X;
+                vertexA.m_Ny = AN.Y;
+                vertexA.m_Nz = AN.Z;
                 vertexA.m_TCx = oldTri.m_A.m_TCx;
                 vertexA.m_TCy = oldTri.m_A.m_TCy;
                 vertexA.m_iNumMatrices = 0;
@@ -499,14 +507,14 @@ namespace OpenCLRenderer
                 vertexA.m_fWeight3 = 0.0f;
 
                 Vertex vertexB = new Vertex();
-                vec3 BV = new vec3(matTransform * new vec4(oldTri.m_B.m_Vx, oldTri.m_B.m_Vy, oldTri.m_B.m_Vz, 1.0f));
-                vertexB.m_Vx = BV.x;
-                vertexB.m_Vy = BV.y;
-                vertexB.m_Vz = BV.z;
-                vec3 BN = new vec3(matTransform * new vec4(oldTri.m_B.m_Nx, oldTri.m_B.m_Ny, oldTri.m_B.m_Nz, 0.0f));
-                vertexB.m_Nx = BN.x;
-                vertexB.m_Ny = BN.y;
-                vertexB.m_Nz = BN.z;
+                Vector3 BV = new Vector3(matTransform * new Vector4(oldTri.m_B.m_Vx, oldTri.m_B.m_Vy, oldTri.m_B.m_Vz, 1.0f));
+                vertexB.m_Vx = BV.X;
+                vertexB.m_Vy = BV.Y;
+                vertexB.m_Vz = BV.Z;
+                Vector3 BN = new Vector3(matTransform * new Vector4(oldTri.m_B.m_Nx, oldTri.m_B.m_Ny, oldTri.m_B.m_Nz, 0.0f));
+                vertexB.m_Nx = BN.X;
+                vertexB.m_Ny = BN.Y;
+                vertexB.m_Nz = BN.Z;
                 vertexB.m_TCx = oldTri.m_B.m_TCx;
                 vertexB.m_TCy = oldTri.m_B.m_TCy;
                 vertexB.m_iNumMatrices = 0;
@@ -518,14 +526,14 @@ namespace OpenCLRenderer
                 vertexB.m_fWeight3 = 0.0f;
 
                 Vertex vertexC = new Vertex();
-                vec3 CV = new vec3(matTransform * new vec4(oldTri.m_C.m_Vx, oldTri.m_C.m_Vy, oldTri.m_C.m_Vz, 1.0f));
-                vertexC.m_Vx = CV.x;
-                vertexC.m_Vy = CV.y;
-                vertexC.m_Vz = CV.z;
-                vec3 CN = new vec3(matTransform * new vec4(oldTri.m_C.m_Nx, oldTri.m_C.m_Ny, oldTri.m_C.m_Nz, 0.0f));
-                vertexC.m_Nx = CN.x;
-                vertexC.m_Ny = CN.y;
-                vertexC.m_Nz = CN.z;
+                Vector3 CV = new Vector3(matTransform * new Vector4(oldTri.m_C.m_Vx, oldTri.m_C.m_Vy, oldTri.m_C.m_Vz, 1.0f));
+                vertexC.m_Vx = CV.X;
+                vertexC.m_Vy = CV.Y;
+                vertexC.m_Vz = CV.Z;
+                Vector3 CN = new Vector3(matTransform * new Vector4(oldTri.m_C.m_Nx, oldTri.m_C.m_Ny, oldTri.m_C.m_Nz, 0.0f));
+                vertexC.m_Nx = CN.X;
+                vertexC.m_Ny = CN.Y;
+                vertexC.m_Nz = CN.Z;
                 vertexC.m_TCx = oldTri.m_C.m_TCx;
                 vertexC.m_TCy = oldTri.m_C.m_TCy;
                 vertexC.m_iNumMatrices = 0;
@@ -864,53 +872,55 @@ namespace OpenCLRenderer
             //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
             OpenCLDevice clDevice = m_listOpenCLDevices[0];
             {
-                ErrorCode error;
+                //ErrorCode error;
 
                 // texturak betoltese
-                if (null != clDevice.clInput_Materials) { Cl.ReleaseMemObject(clDevice.clInput_Materials); clDevice.clInput_Materials = null; }
-                clDevice.clInput_Materials = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMaterials.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Materials"); }
+                if (null != clDevice.clInput_Materials) { /*Cl.ReleaseMemObject(clDevice.clInput_Materials);*/clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
+                //clDevice.clInput_Materials = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMaterials.ToArray(), out error);
+                clDevice.clInput_Materials = new ComputeBuffer<Material>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMaterials.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Materials"); }
 
-                if (null != clDevice.clInput_TexturesData) { Cl.ReleaseMemObject(clDevice.clInput_TexturesData); clDevice.clInput_TexturesData = null; }
-                clDevice.clInput_TexturesData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listTexturesData.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: TexturesData"); }
+                if (null != clDevice.clInput_TexturesData) { /*Cl.ReleaseMemObject(clDevice.clInput_TexturesData);*/clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
+                clDevice.clInput_TexturesData = new ComputeBuffer<byte>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listTexturesData.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: TexturesData"); }
 
                 // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { Cl.ReleaseMemObject(clDevice.clInput_MatricesData); clDevice.clInput_MatricesData = null; }
-                clDevice.clInput_MatricesData = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMatrices.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
+                if (null != clDevice.clInput_MatricesData) { /*Cl.ReleaseMemObject(clDevice.clInput_MatricesData);*/clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
+                clDevice.clInput_MatricesData = new ComputeBuffer<Matrix>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
 
                 // global bvh nodes, count
                 clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
 
                 // Global level N
-                foreach (IMem<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
+                foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
                 {
-                    Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                    //Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                    clInput_RefitTree_LevelX.Dispose();
                 }
                 clDevice.listCLInput_RefitTree_LevelX.Clear();
                 foreach (List<BVHNode> listLevelXBVHs in listAllLevelXBVHs)
                 {
                     // levels
-                    IMem<BVHNode> clInput_RefitTree_LevelX = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listLevelXBVHs.ToArray(), out error);
-                    if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInput_RefitTree_LevelX"); }
+                    ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listLevelXBVHs.ToArray());
+                    //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInput_RefitTree_LevelX"); }
                     clDevice.listCLInput_RefitTree_LevelX.Add(clInput_RefitTree_LevelX);
                 }
 
                 // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType); clDevice.clInput_AllBVHNodesType = null; }
-                clDevice.clInput_AllBVHNodesType = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodesType.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodesType"); }
+                if (null != clDevice.clInput_AllBVHNodesType) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType);*/clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
+                clDevice.clInput_AllBVHNodesType = new ComputeBuffer<int>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodesType.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodesType"); }
 
                 // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes); clDevice.clInput_AllBVHNodes = null; }
-                clDevice.clInput_AllBVHNodes = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, listAllBVHNodes.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
+                if (null != clDevice.clInput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes);*/clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
+                clDevice.clInput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
 
                 // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes); clDevice.clInputOutput_AllBVHNodes = null; }
-                clDevice.clInputOutput_AllBVHNodes = Cl.CreateBuffer<BVHNode>(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadWrite, listAllBVHNodes.ToArray(), out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
+                if (null != clDevice.clInputOutput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes);*/clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
+                clDevice.clInputOutput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
 
             listAllBVHNodes.Clear();
@@ -938,21 +948,37 @@ namespace OpenCLRenderer
             //Parallel.For(0, m_listOpenCLDevices.Count, index =>
             int index = 0;
             {
-                ErrorCode error;
+                //ErrorCode error;
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
-                Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
-                Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
-                Cl.SetKernelArg(device.kernelVertexShader, 3, device.clInputOutput_AllBVHNodes);
+                device.kernelVertexShader.SetMemoryArgument(0, device.clInput_AllBVHNodesType);
+                device.kernelVertexShader.SetMemoryArgument(1, device.clInput_AllBVHNodes);
+                device.kernelVertexShader.SetMemoryArgument(2, device.clInput_MatricesData);
+                device.kernelVertexShader.SetMemoryArgument(3, device.clInputOutput_AllBVHNodes);
+                //Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
+                //Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
+                //Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
+                //Cl.SetKernelArg(device.kernelVertexShader, 3, device.clInputOutput_AllBVHNodes);
 
-                Event clevent;
+                //Event clevent;
                 int iCount = device.m_iNumBVHNodes;
-                IntPtr intptrCount = new IntPtr(iCount);
-                error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
-                Cl.Finish(device.cmdQueue);
-                if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
-                Cl.ReleaseEvent(clevent);
+                //IntPtr intptrCount = new IntPtr(iCount);
+
+                ComputeEventList eventList = new ComputeEventList();
+                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
+                commands.Execute(device.kernelVertexShader, null, new long[] { iCount }, null, eventList);
+                commands.Finish();
+                commands.Dispose();
+                foreach (ComputeEventBase eventBase in eventList)
+                {
+                    eventBase.Dispose();
+                }
+                eventList.Clear();
+
+                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
+                //Cl.Finish(device.cmdQueue);
+                //if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
+                //Cl.ReleaseEvent(clevent);
             }/*);*/
 
             m_mtxMutex.ReleaseMutex();
@@ -967,32 +993,44 @@ namespace OpenCLRenderer
             {
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                ErrorCode error;
+                //ErrorCode error;
                 
                 for (int i = 0; i < device.listCLInput_RefitTree_LevelX.Count; i++)
                 {
                     int iCount = m_listRefitTree_LevelXSizes[i];
                     if (iCount == 0) { continue; }
 
-                    Event clevent;
+                    //Event clevent;
 
-                    IMem<BVHNode> clInput_RefitTree_LevelX = device.listCLInput_RefitTree_LevelX[i];
+                    ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = device.listCLInput_RefitTree_LevelX[i];
 
-                    Cl.SetKernelArg(device.KernelRefitTree_LevelX, 0, clInput_RefitTree_LevelX);
-                    Cl.SetKernelArg(device.KernelRefitTree_LevelX, 1, device.clInputOutput_AllBVHNodes);
+                    device.KernelRefitTree_LevelX.SetMemoryArgument(0, clInput_RefitTree_LevelX);
+                    device.KernelRefitTree_LevelX.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
+                    //Cl.SetKernelArg(device.KernelRefitTree_LevelX, 0, clInput_RefitTree_LevelX);
+                    //Cl.SetKernelArg(device.KernelRefitTree_LevelX, 1, device.clInputOutput_AllBVHNodes);
 
-                    IntPtr intptrCount = new IntPtr(iCount);
-                    error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRefitTree_LevelX, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
-                    Cl.Finish(device.cmdQueue);
-                    if (error != ErrorCode.Success) { throw new Exception("RunRefitTree: Cl.EnqueueNDRangeKernel"); }
-                    Cl.ReleaseEvent(clevent);
+                    //IntPtr intptrCount = new IntPtr(iCount);
+                    //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRefitTree_LevelX, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
+                    //Cl.Finish(device.cmdQueue);
+                    //if (error != ErrorCode.Success) { throw new Exception("RunRefitTree: Cl.EnqueueNDRangeKernel"); }
+                    //Cl.ReleaseEvent(clevent);
+                    ComputeEventList eventList = new ComputeEventList();
+                    ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
+                    commands.Execute(device.KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
+                    commands.Finish();
+                    commands.Dispose();
+                    foreach (ComputeEventBase eventBase in eventList)
+                    {
+                        eventBase.Dispose();
+                    }
+                    eventList.Clear();
                 }
             }/*);*/
 
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void SetCamera(vec3 pos, vec3 at, vec3 up, float angle, float zfar)
+        public void SetCamera(Vector3 pos, Vector3 at, Vector3 up, float angle, float zfar)
         {
             m_mtxMutex.WaitOne();
 
@@ -1002,66 +1040,89 @@ namespace OpenCLRenderer
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
                 // pos
-                Vector3 inPos;
-                inPos.m_X = pos.x;
-                inPos.m_Y = pos.y;
-                inPos.m_Z = pos.z;
+                Float3 inPos;
+                inPos.m_X = pos.X;
+                inPos.m_Y = pos.Y;
+                inPos.m_Z = pos.Z;
 
                 // at
-                Vector3 inAt;
-                inAt.m_X = at.x;
-                inAt.m_Y = at.y;
-                inAt.m_Z = at.z;
+                Float3 inAt;
+                inAt.m_X = at.X;
+                inAt.m_Y = at.Y;
+                inAt.m_Z = at.Z;
 
                 // at
-                up = up.Normalized;
-                Vector3 inUp;
-                inUp.m_X = up.x;
-                inUp.m_Y = up.y;
-                inUp.m_Z = up.z;
+                up = up.Normalized();
+                Float3 inUp;
+                inUp.m_X = up.X;
+                inUp.m_Y = up.Y;
+                inUp.m_Z = up.Z;
 
                 // dir
-                vec3 dir = (at - pos).Normalized;
-                Vector3 inDir;
-                inDir.m_X = dir.x;
-                inDir.m_Y = dir.y;
-                inDir.m_Z = dir.z;
+                Vector3 dir = (at - pos).Normalized();
+                Float3 inDir;
+                inDir.m_X = dir.X;
+                inDir.m_Y = dir.Y;
+                inDir.m_Z = dir.Z;
 
                 // right
-                vec3 right = vec3.Cross(dir, up).Normalized;
-                Vector3 inRight;
-                inRight.m_X = right.x;
-                inRight.m_Y = right.y;
-                inRight.m_Z = right.z;
+                Vector3 right = Vector3.Cross(dir, up).Normalized();
+                Float3 inRight;
+                inRight.m_X = right.X;
+                inRight.m_Y = right.Y;
+                inRight.m_Z = right.Z;
 
                 // step
                 float step = angle / ((float)m_iHeight / 2.0f);
 
-                ErrorCode error;
-                Event clevent;
+                //ErrorCode error;
+                //Event clevent;
 
-                IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
-                IntPtr floatSize = new IntPtr(Marshal.SizeOf<float>());
-                IntPtr Vector3Size = new IntPtr(Marshal.SizeOf<Vector3>());
+                //IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
+                //IntPtr floatSize = new IntPtr(Marshal.SizeOf<float>());
+                //IntPtr Float3Size = new IntPtr(Marshal.SizeOf<Float3>());
 
-                Cl.SetKernelArg(device.KernelCameraRays, 0, Vector3Size, inPos);
-                Cl.SetKernelArg(device.KernelCameraRays, 1, Vector3Size, inAt);
-                Cl.SetKernelArg(device.KernelCameraRays, 2, Vector3Size, inUp);
-                Cl.SetKernelArg(device.KernelCameraRays, 3, Vector3Size, inDir);
-                Cl.SetKernelArg(device.KernelCameraRays, 4, Vector3Size, inRight);
-                Cl.SetKernelArg(device.KernelCameraRays, 5, floatSize, step);
-                Cl.SetKernelArg(device.KernelCameraRays, 6, floatSize, angle);
-                Cl.SetKernelArg(device.KernelCameraRays, 7, floatSize, zfar);
-                Cl.SetKernelArg(device.KernelCameraRays, 8, intSize, m_iWidth);
-                Cl.SetKernelArg(device.KernelCameraRays, 9, intSize, m_iHeight);
-                Cl.SetKernelArg(device.KernelCameraRays, 10, intSize, m_iWidth / 2);
-                Cl.SetKernelArg(device.KernelCameraRays, 11, intSize, m_iHeight / 2);
-                Cl.SetKernelArg(device.KernelCameraRays, 12, device.clInputOutput_Rays);
+                device.KernelCameraRays.SetValueArgument<Float3>(0, inPos);
+                device.KernelCameraRays.SetValueArgument<Float3>(1, inAt);
+                device.KernelCameraRays.SetValueArgument<Float3>(2, inUp);
+                device.KernelCameraRays.SetValueArgument<Float3>(3, inDir);
+                device.KernelCameraRays.SetValueArgument<Float3>(4, inRight);
+                device.KernelCameraRays.SetValueArgument<float>(5, step);
+                device.KernelCameraRays.SetValueArgument<float>(6, angle);
+                device.KernelCameraRays.SetValueArgument<float>(7, zfar);
+                device.KernelCameraRays.SetValueArgument<int>(8, m_iWidth);
+                device.KernelCameraRays.SetValueArgument<int>(9, m_iHeight);
+                device.KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
+                device.KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
+                device.KernelCameraRays.SetMemoryArgument(12, device.clInputOutput_Rays);
+                //Cl.SetKernelArg(device.KernelCameraRays, 0, Float3Size, inPos);
+                //Cl.SetKernelArg(device.KernelCameraRays, 1, Float3Size, inAt);
+                //Cl.SetKernelArg(device.KernelCameraRays, 2, Float3Size, inUp);
+                //Cl.SetKernelArg(device.KernelCameraRays, 3, Float3Size, inDir);
+                //Cl.SetKernelArg(device.KernelCameraRays, 4, Float3Size, inRight);
+                //Cl.SetKernelArg(device.KernelCameraRays, 5, floatSize, step);
+                //Cl.SetKernelArg(device.KernelCameraRays, 6, floatSize, angle);
+                //Cl.SetKernelArg(device.KernelCameraRays, 7, floatSize, zfar);
+                //Cl.SetKernelArg(device.KernelCameraRays, 8, intSize, m_iWidth);
+                //Cl.SetKernelArg(device.KernelCameraRays, 9, intSize, m_iHeight);
+                //Cl.SetKernelArg(device.KernelCameraRays, 10, intSize, m_iWidth / 2);
+                //Cl.SetKernelArg(device.KernelCameraRays, 11, intSize, m_iHeight / 2);
+                //Cl.SetKernelArg(device.KernelCameraRays, 12, device.clInputOutput_Rays);
 
-                error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelCameraRays, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
-                Cl.Finish(device.cmdQueue);
-                if (error != ErrorCode.Success) { throw new Exception("KernelCameraRays: Cl.EnqueueNDRangeKernel"); }
-                Cl.ReleaseEvent(clevent);
+                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelCameraRays, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
+                //Cl.Finish(device.cmdQueue);
+                //if (error != ErrorCode.Success) { throw new Exception("KernelCameraRays: Cl.EnqueueNDRangeKernel"); }
+                //Cl.ReleaseEvent(clevent);
+                ComputeEventList eventList = new ComputeEventList();
+                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
+                commands.Execute(device.KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+                commands.Finish();
+                commands.Dispose();
+                foreach (ComputeEventBase eventBase in eventList)
+                {
+                    eventBase.Dispose();
+                }
+                eventList.Clear();
             }/*);*/
 
             m_mtxMutex.ReleaseMutex();
@@ -1076,55 +1137,70 @@ namespace OpenCLRenderer
             {
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                Event clevent;
-                ErrorCode error;
+                //Event clevent;
+                //ErrorCode error;
 
-                IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
+                //IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
 
-                Cl.SetKernelArg(device.KernelRayShader, 0, device.clInputOutput_Rays);
-                Cl.SetKernelArg(device.KernelRayShader, 1, device.clInputOutput_AllBVHNodes);
-                Cl.SetKernelArg(device.KernelRayShader, 2, intSize, m_iWidth);
-                Cl.SetKernelArg(device.KernelRayShader, 3, intSize, m_iHeight);
-                Cl.SetKernelArg(device.KernelRayShader, 4, device.clOutput_Texture);
+                device.KernelRayShader.SetMemoryArgument(0, device.clInputOutput_Rays);
+                device.KernelRayShader.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
+                device.KernelRayShader.SetValueArgument<int>(2, m_iWidth);
+                device.KernelRayShader.SetValueArgument<int>(3, m_iHeight);
+                device.KernelRayShader.SetMemoryArgument(4, device.clOutput_Texture);
+                //Cl.SetKernelArg(device.KernelRayShader, 0, device.clInputOutput_Rays);
+                //Cl.SetKernelArg(device.KernelRayShader, 1, device.clInputOutput_AllBVHNodes);
+                //Cl.SetKernelArg(device.KernelRayShader, 2, intSize, m_iWidth);
+                //Cl.SetKernelArg(device.KernelRayShader, 3, intSize, m_iHeight);
+                //Cl.SetKernelArg(device.KernelRayShader, 4, device.clOutput_Texture);
 
-                error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRayShader, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
-                Cl.Finish(device.cmdQueue);
-                if (error != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueNDRangeKernel"); }
-                Cl.ReleaseEvent(clevent);
+                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRayShader, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
+                //Cl.Finish(device.cmdQueue);
+                //if (error != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueNDRangeKernel"); }
+                //Cl.ReleaseEvent(clevent);
+                ComputeEventList eventList = new ComputeEventList();
+                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
+                commands.Execute(device.KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+                commands.Finish();
+                commands.Dispose();
+                foreach (ComputeEventBase eventBase in eventList)
+                {
+                    eventBase.Dispose();
+                }
+                eventList.Clear();
             }/*);*/
 
             // get image
-            ErrorCode error0;
-            OpenCLDevice device0 = m_listOpenCLDevices[0];
-            Event clevent0;
-            error0 = Cl.EnqueueReadBuffer(device0.cmdQueue, device0.clOutput_Texture, Bool.True, 0, m_TextureBytes.Length, m_TextureBytes, 0, null, out clevent0);
-            Cl.Finish(device0.cmdQueue);
-            if (error0 != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueReadBuffer"); }
-            Cl.ReleaseEvent(clevent0);
+            //ErrorCode error0;
+            //OpenCLDevice device0 = m_listOpenCLDevices[0];
+            //Event clevent0;
+            //error0 = Cl.EnqueueReadBuffer(device0.cmdQueue, device0.clOutput_Texture, Bool.True, 0, m_TextureBytes.Length, m_TextureBytes, 0, null, out clevent0);
+            //Cl.Finish(device0.cmdQueue);
+            //if (error0 != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueReadBuffer"); }
+            //Cl.ReleaseEvent(clevent0);
 
-            UpdateBitmap(m_TextureBytes);
+            //UpdateBitmap(m_TextureBytes);
 
             m_mtxMutex.ReleaseMutex();
         }
 
-        Bitmap UpdateBitmap(byte[] pixels)
-        {
-            BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
-            {
-                IntPtr pNative = bmpData.Scan0;
-                Marshal.Copy(pixels, 0, pNative, pixels.Length);
-            }
-            bitmap.UnlockBits(bmpData);
+        //Bitmap UpdateBitmap(byte[] pixels)
+        //{
+        //    BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
+        //    {
+        //        IntPtr pNative = bmpData.Scan0;
+        //        Marshal.Copy(pixels, 0, pNative, pixels.Length);
+        //    }
+        //    bitmap.UnlockBits(bmpData);
+        //
+        //    bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+        //
+        //    return bitmap;
+        //}
 
-            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-
-            return bitmap;
-        }
-
-        public Bitmap GetBitmap()
-        {
-            return bitmap;
-        }
+        //public Bitmap GetBitmap()
+        //{
+        //    return bitmap;
+        //}
 
         static BBox GenBBox(Triangle tri)
         {
@@ -1185,42 +1261,70 @@ namespace OpenCLRenderer
 
                 int iSize = iWidth * iHeight;
 
-                ErrorCode error;
+                //ErrorCode error;
 
                 // rays
                 if (null != clDevice.clInputOutput_Rays)
                 {
-                    Cl.ReleaseMemObject(clDevice.clInputOutput_Rays);
+                    //Cl.ReleaseMemObject(clDevice.clInputOutput_Rays);
+                    clDevice.clInputOutput_Rays.Dispose();
                     clDevice.clInputOutput_Rays = null;
                 }
 
-                clDevice.clInputOutput_Rays = Cl.CreateBuffer<Ray>(clDevice.m_Context, MemFlags.ReadWrite, iSize, out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInputOutput_Rays"); }
+                clDevice.clInputOutput_Rays = new ComputeBuffer<Ray>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iSize);//Cl.CreateBuffer<Ray>(clDevice.m_Context, MemFlags.ReadWrite, iSize, out error);
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInputOutput_Rays"); }
 
                 ;
 
                 // texture
                 if (null != clDevice.clOutput_Texture)
                 {
-                    Cl.ReleaseMemObject(clDevice.clOutput_Texture);
+                    //Cl.ReleaseMemObject(clDevice.clOutput_Texture);
+                    clDevice.clOutput_Texture.Dispose();
                     clDevice.clOutput_Texture = null;
                 }
 
-                clDevice.clOutput_Texture = Cl.CreateBuffer<Color>(clDevice.m_Context, MemFlags.WriteOnly, iSize, out error);
-                if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clOutput_Texture"); }
+                if (0 != clDevice.m_iGLTextureId)
+                {
+                    GL.DeleteTexture(clDevice.m_iGLTextureId);
+                    clDevice.m_iGLTextureId = 0;
+                }
+
+                clDevice.m_iGLTextureId = GenerateGLTexture(iWidth, iHeight);
+                clDevice.clOutput_Texture = ComputeImage2D.CreateFromGLTexture2D(clDevice.m_Context, ComputeMemoryFlags.ReadOnly, (int)TextureTarget.Texture2D, 0, clDevice.m_iGLTextureId);//Cl.CreateBuffer<Color>(clDevice.m_Context, MemFlags.WriteOnly, iSize, out error);
+                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clOutput_Texture"); }
             }/*);*/
 
-            m_TextureBytes = new byte[iWidth * iHeight * 4];
-
-            if (null != bitmap)
-            {
-                bitmap.Dispose();
-                bitmap = null;
-            }
             
-            bitmap = new Bitmap(iWidth, iHeight, PixelFormat.Format32bppArgb);
+
+            //m_TextureBytes = new byte[iWidth * iHeight * 4];
+            //
+            //if (null != bitmap)
+            //{
+            //    bitmap.Dispose();
+            //    bitmap = null;
+            //}
+            //
+            //bitmap = new Bitmap(iWidth, iHeight, PixelFormat.Format32bppArgb);
 
             m_mtxMutex.ReleaseMutex();
+        }
+
+        int GenerateGLTexture(int iWidth, int iHeight)
+        {
+            // We create a single float channel 512^2 texture
+            int texHandle;
+            texHandle = GL.GenTexture();
+
+            GL.ActiveTexture(TextureUnit.Texture1);
+            GL.BindTexture(TextureTarget.Texture2D, texHandle);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)All.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)All.Nearest);
+            //GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R32f, 512, 512, 0, PixelFormat., PixelType.Float, IntPtr.Zero);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, iWidth, iHeight, 0, PixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero);
+
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+            return texHandle;
         }
 
         public void Dispose()
@@ -1238,36 +1342,44 @@ namespace OpenCLRenderer
             OpenCLDevice clDevice = m_listOpenCLDevices[0];
             {
                 // texturak betoltese
-                if (null != clDevice.clInput_Materials) { Cl.ReleaseMemObject(clDevice.clInput_Materials); clDevice.clInput_Materials = null; }
+                if (null != clDevice.clInput_Materials) { /*Cl.ReleaseMemObject(clDevice.clInput_Materials);*/clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
                 
-                if (null != clDevice.clInput_TexturesData) { Cl.ReleaseMemObject(clDevice.clInput_TexturesData); clDevice.clInput_TexturesData = null; }
+                if (null != clDevice.clInput_TexturesData) { /*Cl.ReleaseMemObject(clDevice.clInput_TexturesData);*/clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
                 
                 // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { Cl.ReleaseMemObject(clDevice.clInput_MatricesData); clDevice.clInput_MatricesData = null; }
+                if (null != clDevice.clInput_MatricesData) { /*Cl.ReleaseMemObject(clDevice.clInput_MatricesData);*/clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
                 
                 // Global level N
-                foreach (IMem<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
+                foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
                 {
-                    Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                    //Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
+                    clInput_RefitTree_LevelX.Dispose();
                 }
                 clDevice.listCLInput_RefitTree_LevelX.Clear();
                 
                 // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType); clDevice.clInput_AllBVHNodesType = null; }
+                if (null != clDevice.clInput_AllBVHNodesType) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType);*/clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
 
                 // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes); clDevice.clInput_AllBVHNodes = null; }
+                if (null != clDevice.clInput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes);*/clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
                 
                 // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes); clDevice.clInputOutput_AllBVHNodes = null; }
+                if (null != clDevice.clInputOutput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes);*/clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
 
-                Cl.ReleaseKernel(clDevice.kernelVertexShader);
-                Cl.ReleaseKernel(clDevice.KernelRefitTree_LevelX);
-                Cl.ReleaseKernel(clDevice.KernelCameraRays);
-                Cl.ReleaseKernel(clDevice.KernelRayShader);
-                Cl.ReleaseCommandQueue(clDevice.cmdQueue);
-                Cl.ReleaseProgram(clDevice.m_Program);
-                Cl.ReleaseContext(clDevice.m_Context);
+                //Cl.ReleaseKernel(clDevice.kernelVertexShader);
+                //Cl.ReleaseKernel(clDevice.KernelRefitTree_LevelX);
+                //Cl.ReleaseKernel(clDevice.KernelCameraRays);
+                //Cl.ReleaseKernel(clDevice.KernelRayShader);
+                //Cl.ReleaseCommandQueue(clDevice.cmdQueue);
+                //Cl.ReleaseProgram(clDevice.m_Program);
+                //Cl.ReleaseContext(clDevice.m_Context);
+                clDevice.kernelVertexShader.Dispose();
+                clDevice.KernelRefitTree_LevelX.Dispose();
+                clDevice.KernelCameraRays.Dispose();
+                clDevice.KernelRayShader.Dispose();
+                clDevice.cmdQueue.Dispose();
+                clDevice.m_Program.Dispose();
+                clDevice.m_Context.Dispose();
             }
 
             m_listOpenCLDevices.Clear();
@@ -1291,38 +1403,41 @@ namespace OpenCLRenderer
 
         int m_iWidth;
         int m_iHeight;
-        byte[] m_TextureBytes = null;
-        Bitmap bitmap = null;
+        //byte[] m_TextureBytes = null;
+        //Bitmap bitmap = null;
 
         List<OpenCLDevice> m_listOpenCLDevices = new List<OpenCLDevice>();
     }
 
     class OpenCLDevice
     {
-        public Context m_Context;
-        public Program m_Program;
-        public Device m_Device;
-        public CommandQueue cmdQueue;
-        public Kernel kernelVertexShader;
-        public Kernel KernelRefitTree_LevelX;
-        public Kernel KernelCameraRays;
-        public Kernel KernelRayShader;
+        public ComputeContext m_Context;
+        public ComputeProgram m_Program;
+        public ComputeDevice m_Device;
+        public ComputeCommandQueue cmdQueue;
+        public ComputeKernel kernelVertexShader;
+        public ComputeKernel KernelRefitTree_LevelX;
+        public ComputeKernel KernelCameraRays;
+        public ComputeKernel KernelRayShader;
 
         public string m_strName;
         
         // textures
-        public IMem<Material> clInput_Materials = null;
-        public IMem<byte> clInput_TexturesData = null;
+        public ComputeBuffer<Material> clInput_Materials = null;
+        public ComputeBuffer<byte> clInput_TexturesData = null;
 
         // matrices
-        public IMem<Matrix> clInput_MatricesData = null;
+        public ComputeBuffer<Matrix> clInput_MatricesData = null;
 
         public int m_iNumBVHNodes;
-        public IMem<int> clInput_AllBVHNodesType = null;
-        public IMem<BVHNode> clInput_AllBVHNodes = null;
-        public IMem<BVHNode> clInputOutput_AllBVHNodes = null;
-        public List< IMem<BVHNode> > listCLInput_RefitTree_LevelX = new List< IMem<BVHNode> >();
-        public IMem<Ray> clInputOutput_Rays = null;
-        public IMem<Color> clOutput_Texture = null;
+        public ComputeBuffer<int> clInput_AllBVHNodesType = null;
+        public ComputeBuffer<BVHNode> clInput_AllBVHNodes = null;
+        public ComputeBuffer<BVHNode> clInputOutput_AllBVHNodes = null;
+        public List<ComputeBuffer<BVHNode> > listCLInput_RefitTree_LevelX = new List<ComputeBuffer<BVHNode> >();
+        public ComputeBuffer<Ray> clInputOutput_Rays = null;
+
+        public int m_iGLTextureId = 0;
+        public ComputeImage2D clOutput_Texture = null;
+        
     }
 }

@@ -1,5 +1,4 @@
-﻿using GlmSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -18,6 +17,10 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
+using OpenTK;
+using OpenTK.Graphics;
+using OpenTK.Graphics.OpenGL;
+
 namespace Project
 {
     /// <summary>
@@ -28,61 +31,76 @@ namespace Project
         public MainWindow()
         {
             InitializeComponent();
-
-            m_Scene = new OpenCLRenderer.Scene();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Mutex mtxMutex = new Mutex();
+            
 
+            m_GLControl = new OpenTK.GLControl(new OpenTK.Graphics.GraphicsMode(new OpenTK.Graphics.ColorFormat(8, 8, 8, 8), 24, 0, 4), 3, 0, OpenTK.Graphics.GraphicsContextFlags.Default);
+            m_GLControl.VSync = false;
+            m_GLControl.Resize += M_GLControl_Resize;
+            m_GLControl.Load += M_GLControl_Load;
+
+            form.Child = m_GLControl;
+        }
+
+        private void M_GLControl_Load(object sender, EventArgs e)
+        {
+            m_GLControl.MakeCurrent();
+
+            m_Scene = new OpenCLRenderer.Scene();
+            m_Scene.CreateDevice();
+
+            Mutex mtxMutex = new Mutex();
+            
             Parallel.For(0, 1, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
                 OBJLoader objLoader = new OBJLoader();
-
+            
                 mtxMutex.WaitOne();
                 objLoader.LoadFromFile(@strDirectory, @"Model.obj");
                 mtxMutex.ReleaseMutex();
-
+            
                 // convert to triangle list
                 int iMatrixId = m_Scene.GenMatrix();
-                m_Scene.SetMatrix(iMatrixId, mat4.Translate(new vec3(100,200,300)));
-
+                m_Scene.SetMatrix(iMatrixId, Matrix4.CreateTranslation(new Vector3(100,200,300)));
+            
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (OBJLoader.Material material in objLoader.materials)
                 {
                     string strDiffuseTextureName = @strDirectory + @material.texture_filename;
                     string strSpecularTextureName = @strDirectory + @"Specular.bmp";
                     string strNormalTextureName = @strDirectory + @"Normal.bmp";
-
+            
                     int iMaterialId = m_Scene.GenMaterial();
                     m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
-
+            
                     for (int i = 0; i < material.indices.Count; i += 3)
                     {
-                        vec3 vA = objLoader.vertices[material.indices[i + 0].id_vertex];
-                        vec3 vB = objLoader.vertices[material.indices[i + 1].id_vertex];
-                        vec3 vC = objLoader.vertices[material.indices[i + 2].id_vertex];
-
-                        vec3 nA = objLoader.normals[material.indices[i + 0].id_normal];
-                        vec3 nB = objLoader.normals[material.indices[i + 1].id_normal];
-                        vec3 nC = objLoader.normals[material.indices[i + 2].id_normal];
-
-                        vec2 tA = objLoader.text_coords[material.indices[i + 0].id_textcoord];
-                        vec2 tB = objLoader.text_coords[material.indices[i + 1].id_textcoord];
-                        vec2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
-
+                        Vector3 vA = objLoader.vertices[material.indices[i + 0].id_vertex];
+                        Vector3 vB = objLoader.vertices[material.indices[i + 1].id_vertex];
+                        Vector3 vC = objLoader.vertices[material.indices[i + 2].id_vertex];
+            
+                        Vector3 nA = objLoader.normals[material.indices[i + 0].id_normal];
+                        Vector3 nB = objLoader.normals[material.indices[i + 1].id_normal];
+                        Vector3 nC = objLoader.normals[material.indices[i + 2].id_normal];
+            
+                        Vector2 tA = objLoader.text_coords[material.indices[i + 0].id_textcoord];
+                        Vector2 tB = objLoader.text_coords[material.indices[i + 1].id_textcoord];
+                        Vector2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
+            
                         OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
-                        vertexA.m_Vx = vA.x;
-                        vertexA.m_Vy = vA.y;
-                        vertexA.m_Vz = vA.z;
-                        vertexA.m_Nx = nA.x;
-                        vertexA.m_Ny = nA.y;
-                        vertexA.m_Nz = nA.z;
-                        vertexA.m_TCx = tA.x;
-                        vertexA.m_TCy = tA.y;
+                        vertexA.m_Vx = vA.X;
+                        vertexA.m_Vy = vA.Y;
+                        vertexA.m_Vz = vA.Z;
+                        vertexA.m_Nx = nA.X;
+                        vertexA.m_Ny = nA.Y;
+                        vertexA.m_Nz = nA.Z;
+                        vertexA.m_TCx = tA.X;
+                        vertexA.m_TCy = tA.Y;
                         vertexA.m_iNumMatrices = 1;
                         vertexA.m_iMatrixId1 = iMatrixId;
                         vertexA.m_fWeight1 = 1.0f;
@@ -90,16 +108,16 @@ namespace Project
                         vertexA.m_fWeight2 = 0.0f;
                         vertexA.m_iMatrixId3 = -1;
                         vertexA.m_fWeight3 = 0.0f;
-
+            
                         OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
-                        vertexB.m_Vx = vB.x;
-                        vertexB.m_Vy = vB.y;
-                        vertexB.m_Vz = vB.z;
-                        vertexB.m_Nx = nB.x;
-                        vertexB.m_Ny = nB.y;
-                        vertexB.m_Nz = nB.z;
-                        vertexB.m_TCx = tB.x;
-                        vertexB.m_TCy = tB.y;
+                        vertexB.m_Vx = vB.X;
+                        vertexB.m_Vy = vB.Y;
+                        vertexB.m_Vz = vB.Z;
+                        vertexB.m_Nx = nB.X;
+                        vertexB.m_Ny = nB.Y;
+                        vertexB.m_Nz = nB.Z;
+                        vertexB.m_TCx = tB.X;
+                        vertexB.m_TCy = tB.Y;
                         vertexB.m_iNumMatrices = 1;
                         vertexB.m_iMatrixId1 = iMatrixId;
                         vertexB.m_fWeight1 = 1.0f;
@@ -107,16 +125,16 @@ namespace Project
                         vertexB.m_fWeight2 = 0.0f;
                         vertexB.m_iMatrixId3 = -1;
                         vertexB.m_fWeight3 = 0.0f;
-
+            
                         OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
-                        vertexC.m_Vx = vC.x;
-                        vertexC.m_Vy = vC.y;
-                        vertexC.m_Vz = vC.z;
-                        vertexC.m_Nx = nC.x;
-                        vertexC.m_Ny = nC.y;
-                        vertexC.m_Nz = nC.z;
-                        vertexC.m_TCx = tC.x;
-                        vertexC.m_TCy = tC.y;
+                        vertexC.m_Vx = vC.X;
+                        vertexC.m_Vy = vC.Y;
+                        vertexC.m_Vz = vC.Z;
+                        vertexC.m_Nx = nC.X;
+                        vertexC.m_Ny = nC.Y;
+                        vertexC.m_Nz = nC.Z;
+                        vertexC.m_TCx = tC.X;
+                        vertexC.m_TCy = tC.Y;
                         vertexC.m_iNumMatrices = 1;
                         vertexC.m_iMatrixId1 = iMatrixId;
                         vertexC.m_fWeight1 = 1.0f;
@@ -124,39 +142,58 @@ namespace Project
                         vertexC.m_fWeight2 = 0.0f;
                         vertexC.m_iMatrixId3 = -1;
                         vertexC.m_fWeight3 = 0.0f;
-
+            
                         OpenCLRenderer.Triangle newTriangle = new OpenCLRenderer.Triangle();
                         newTriangle.m_A = vertexA;
                         newTriangle.m_B = vertexB;
                         newTriangle.m_C = vertexC;
                         newTriangle.m_iMaterialId = iMaterialId;
-
+            
                         triangles.Add(newTriangle);
                     }
                 }
-
+            
                 int iId;
                 //iId = m_Scene.GenObject();
                 //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
                 //m_Scene.SetObject(iId, staticObject);
-
+            
                 iId = m_Scene.GenObject();
                 OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
                 m_Scene.SetObject(iId, dynamicObject);
-
+            
                 triangles.Clear();
                 objLoader.Release();
             });
-
+            
             m_Scene.Commit();
+
+            GL.ClearColor(0.5f, 0.5f, 1.0f, 1.0f);
+
+            GL.Enable(EnableCap.DepthTest);
+            GL.DepthFunc(DepthFunction.Lequal);
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
             m_Timer = new DispatcherTimer();
             m_Timer.Tick += Timer_Tick;
             m_Timer.Interval = TimeSpan.FromMilliseconds(0);
-
+            
             m_ElapsedTime = m_CurrentTime = DateTime.Now;
             m_fSec = 0.0f;
             m_Timer.Start();
+        }
+
+        private void M_GLControl_Resize(object sender, EventArgs e)
+        {
+            if (null == m_Scene) { return; }
+
+            int iWidth = (int)(sender as OpenTK.GLControl).Width;
+            int iHeight = (int)(sender as OpenTK.GLControl).Height;
+
+            GL.Viewport(0, 0, iWidth, iHeight);
+
+            m_Scene.Resize(iWidth, iHeight);
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -178,15 +215,22 @@ namespace Project
 
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
-            m_Scene.SetCamera(new vec3(0, 0, 10), new vec3(0, 0, 0), new vec3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
+            m_Scene.SetCamera(new Vector3(0, 0, 10), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
             m_Scene.RunRayShader();
 
-            Bitmap bitmap = m_Scene.GetBitmap();
-            image.Source = BitmapToImageSource(bitmap);
+            // render
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+            ;
+            
+            m_GLControl.SwapBuffers();
+
+            //Bitmap bitmap = m_Scene.GetBitmap();
+            //image.Source = BitmapToImageSource(bitmap);
         }
 
+        OpenTK.GLControl m_GLControl = null;
         OpenCLRenderer.Scene m_Scene = null;
-
         DispatcherTimer m_Timer = null;
         int FPS = 0;
         DateTime m_ElapsedTime;
@@ -194,31 +238,31 @@ namespace Project
         float m_fDeltaTime;
         float m_fSec;
 
-        BitmapImage BitmapToImageSource(Bitmap bitmap)
-        {
-            MemoryStream memory = new MemoryStream();
-            bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
-            memory.Position = 0;
+        //BitmapImage BitmapToImageSource(Bitmap bitmap)
+        //{
+        //    MemoryStream memory = new MemoryStream();
+        //    bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+        //    memory.Position = 0;
+        //
+        //    BitmapImage bitmapImage = new BitmapImage();
+        //    bitmapImage.BeginInit();
+        //    bitmapImage.DecodePixelWidth = bitmap.Width;
+        //    bitmapImage.DecodePixelHeight = bitmap.Height;
+        //    bitmapImage.StreamSource = memory;
+        //    bitmapImage.EndInit();
+        //    bitmapImage.Freeze();
+        //
+        //    return bitmapImage;
+        //}
 
-            BitmapImage bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.DecodePixelWidth = bitmap.Width;
-            bitmapImage.DecodePixelHeight = bitmap.Height;
-            bitmapImage.StreamSource = memory;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze();
-
-            return bitmapImage;
-        }
-
-        private void Image_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            if (null == m_Scene) { return; }
-
-            int iWidth = (int)image.ActualWidth;
-            int iHeight = (int)image.ActualHeight;
-            m_Scene.Resize(iWidth, iHeight);
-        }
+        //private void Image_SizeChanged(object sender, SizeChangedEventArgs e)
+        //{
+        //    if (null == m_Scene) { return; }
+        //
+        //    int iWidth = (int)image.ActualWidth;
+        //    int iHeight = (int)image.ActualHeight;
+        //    m_Scene.Resize(iWidth, iHeight);
+        //}
 
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -234,6 +278,12 @@ namespace Project
                 m_Scene.Dispose();
                 m_Scene = null;
             }
+
+            if (null != m_GLControl)
+            {
+                m_GLControl.Dispose();
+                m_GLControl = null;
+            }           
         }
     }
 }

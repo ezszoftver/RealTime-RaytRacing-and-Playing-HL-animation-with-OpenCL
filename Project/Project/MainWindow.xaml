@@ -13,6 +13,6 @@
         Loaded="Window_Loaded"
         Closing="Window_Closing">
     <Grid>
-        <Image x:Name="image" Stretch="Fill" SizeChanged="Image_SizeChanged"/>
+        <WindowsFormsHost x:Name="form" Background="White"/>
     </Grid>
 </Window>
