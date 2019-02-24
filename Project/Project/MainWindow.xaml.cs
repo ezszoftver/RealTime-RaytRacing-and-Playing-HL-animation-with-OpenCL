@@ -143,7 +143,7 @@ namespace Project
             
                 int iId;
                 //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, mat4.Identity);
+                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.Identity);
                 //m_Scene.SetObject(iId, staticObject);
             
                 iId = m_Scene.GenObject();
@@ -190,10 +190,6 @@ namespace Project
             image.Source = m_Scene.GetWriteableBitmap();
         }
 
-        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
-        public static extern void CopyMemory(IntPtr dest, IntPtr source, int Length);
-
-        WriteableBitmap writeableBitmap = null;
         OpenCLRenderer.Scene m_Scene = null;
         DispatcherTimer m_Timer = null;
         int FPS = 0;

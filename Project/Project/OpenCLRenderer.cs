@@ -145,68 +145,54 @@ namespace OpenCLRenderer
             {
                 ComputeContextPropertyList properties = new ComputeContextPropertyList(platform);
 
-                //IntPtr curDC = Win32.wglGetCurrentDC();
-                //OpenTK.Graphics.IGraphicsContextInternal ctx = (OpenTK.Graphics.IGraphicsContextInternal)OpenTK.Graphics.GraphicsContext.CurrentContext;
-                //IntPtr raw_context_handle = ctx.Context.Handle;
-                //ComputeContextProperty p1 = new ComputeContextProperty(ComputeContextPropertyName.CL_GL_CONTEXT_KHR, raw_context_handle);
-                //ComputeContextProperty p2 = new ComputeContextProperty(ComputeContextPropertyName.CL_WGL_HDC_KHR, curDC);
-                //ComputeContextProperty p3 = new ComputeContextProperty(ComputeContextPropertyName.Platform, platform.Handle.Value);
-                //List<ComputeContextProperty> props = new List<ComputeContextProperty>() { p1, p2, p3 };
-                //ComputeContextPropertyList properties = new ComputeContextPropertyList(props);
-
                 ComputeContext newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
 
                 ComputeDevice[] devices = newContext.Devices.ToArray();
 
                 foreach (ComputeDevice device in devices)
                 {
-                    OpenCLDevice clDevice = new OpenCLDevice();
+                    m_Context = newContext;
+                    m_Device = device;
 
-                    clDevice.m_Context = newContext;
-                    clDevice.m_Device = device;
-
-                    clDevice.cmdQueue = new ComputeCommandQueue(clDevice.m_Context, clDevice.m_Device, ComputeCommandQueueFlags.None);
-
-                    clDevice.m_Program = new ComputeProgram(clDevice.m_Context, OpenCLScript.GetText());
+                    cmdQueue = new ComputeCommandQueue(m_Context, m_Device, ComputeCommandQueueFlags.None);
+                    m_Program = new ComputeProgram(m_Context, OpenCLScript.GetText());
 
                     try
                     {
-                        clDevice.m_Program.Build(null, null, null, IntPtr.Zero);
+                        m_Program.Build(null, null, null, IntPtr.Zero);
                     }
                     catch (Exception e)
                     {
                         e.ToString();
 
-                        string strText = clDevice.m_Program.GetBuildLog(clDevice.m_Device);
+                        string strText = m_Program.GetBuildLog(m_Device);
                         MessageBox.Show(strText, "Exception");
                         Application.Current.Shutdown();
                     }
 
                     // VertexShader
-                    clDevice.kernelVertexShader = clDevice.m_Program.CreateKernel("Main_VertexShader");
+                    kernelVertexShader = m_Program.CreateKernel("Main_VertexShader");
 
                     // RefitTree
-                    clDevice.KernelRefitTree_LevelX = clDevice.m_Program.CreateKernel("Main_RefitTree_LevelX");
+                    KernelRefitTree_LevelX = m_Program.CreateKernel("Main_RefitTree_LevelX");
 
                     // CameraRays
-                    clDevice.KernelCameraRays = clDevice.m_Program.CreateKernel("Main_CameraRays");
+                    KernelCameraRays = m_Program.CreateKernel("Main_CameraRays");
 
                     // RayShader
-                    clDevice.KernelRayShader = clDevice.m_Program.CreateKernel("Main_RayShader");
+                    KernelRayShader = m_Program.CreateKernel("Main_RayShader");
+                    
+                    // Resize
+                    Resize(8, 8);
 
-                    m_listOpenCLDevices.Add(clDevice);
-
-                    Resize(32, 32);
+                    // ok
                     return;
                 }
 
             }
 
-            // have cl device ?
-            if (0 == m_listOpenCLDevices.Count)
-            {
-                throw new Exception("Scene: Not find OpenCL GPU device!");
-            }
+            MessageBox.Show("Scene: Not find OpenCL GPU device!", "Exception");
+            Application.Current.Shutdown();
         }
 
         // Matrix
@@ -867,48 +853,46 @@ namespace OpenCLRenderer
             }
 
             // bufferek letrehozasa, device-onkent
-            //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
-            OpenCLDevice clDevice = m_listOpenCLDevices[0];
+            // texturak betoltese
+            if (null != clInput_Materials) { clInput_Materials.Dispose(); clInput_Materials = null; }
+            clInput_Materials = new ComputeBuffer<Material>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMaterials.ToArray());
+
+            if (null != clInput_TexturesData) { clInput_TexturesData.Dispose(); clInput_TexturesData = null; }
+            clInput_TexturesData = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listTexturesData.ToArray());
+
+            // matrixok betoltese
+            if (null != clInput_MatricesData) { clInput_MatricesData.Dispose(); clInput_MatricesData = null; }
+            clInput_MatricesData = new ComputeBuffer<Matrix>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
+
+            // global bvh nodes, count
+            m_iNumBVHNodes = listAllBVHNodes.Count;
+
+            // Global level N
+            foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in listCLInput_RefitTree_LevelX)
             {
-                // texturak betoltese
-                if (null != clDevice.clInput_Materials) { clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
-                clDevice.clInput_Materials = new ComputeBuffer<Material>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMaterials.ToArray());
-
-                if (null != clDevice.clInput_TexturesData) { clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
-                clDevice.clInput_TexturesData = new ComputeBuffer<byte>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listTexturesData.ToArray());
-
-                // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
-                clDevice.clInput_MatricesData = new ComputeBuffer<Matrix>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
-
-                // global bvh nodes, count
-                clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
-
-                // Global level N
-                foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
-                {
-                    clInput_RefitTree_LevelX.Dispose();
-                }
-                clDevice.listCLInput_RefitTree_LevelX.Clear();
-                foreach (List<BVHNode> listLevelXBVHs in listAllLevelXBVHs)
-                {
-                    // levels
-                    ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listLevelXBVHs.ToArray());
-                    clDevice.listCLInput_RefitTree_LevelX.Add(clInput_RefitTree_LevelX);
-                }
-
-                // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
-                clDevice.clInput_AllBVHNodesType = new ComputeBuffer<int>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodesType.ToArray());
-
-                // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
-                clDevice.clInput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
-
-                // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
-                clDevice.clInputOutput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
+                clInput_RefitTree_LevelX.Dispose();
             }
+            listCLInput_RefitTree_LevelX.Clear();
+            foreach (List<BVHNode> listLevelXBVHs in listAllLevelXBVHs)
+            {
+                // levels
+                ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = new ComputeBuffer<BVHNode>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listLevelXBVHs.ToArray());
+                listCLInput_RefitTree_LevelX.Add(clInput_RefitTree_LevelX);
+            }
+
+            // global types
+            if (null != clInput_AllBVHNodesType) { clInput_AllBVHNodesType.Dispose(); clInput_AllBVHNodesType = null; }
+            clInput_AllBVHNodesType = new ComputeBuffer<int>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodesType.ToArray());
+
+            // start global nodes
+            if (null != clInput_AllBVHNodes) { clInput_AllBVHNodes.Dispose(); clInput_AllBVHNodes = null; }
+            clInput_AllBVHNodes = new ComputeBuffer<BVHNode>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
+
+            // calculating global types
+            if (null != clInputOutput_AllBVHNodes) { clInputOutput_AllBVHNodes.Dispose(); clInputOutput_AllBVHNodes = null; }
+            clInputOutput_AllBVHNodes = new ComputeBuffer<BVHNode>(m_Context, ComputeMemoryFlags.ReadWrite | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
+
+            ;
 
             listAllBVHNodes.Clear();
             listAllBVHNodesType.Clear();
@@ -932,24 +916,18 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
 
-            //Parallel.For(0, m_listOpenCLDevices.Count, index =>
-            int index = 0;
-            {
-                OpenCLDevice device = m_listOpenCLDevices[index];
+            kernelVertexShader.SetMemoryArgument(0, clInput_AllBVHNodesType);
+            kernelVertexShader.SetMemoryArgument(1, clInput_AllBVHNodes);
+            kernelVertexShader.SetMemoryArgument(2, clInput_MatricesData);
+            kernelVertexShader.SetMemoryArgument(3, clInputOutput_AllBVHNodes);
 
-                device.kernelVertexShader.SetMemoryArgument(0, device.clInput_AllBVHNodesType);
-                device.kernelVertexShader.SetMemoryArgument(1, device.clInput_AllBVHNodes);
-                device.kernelVertexShader.SetMemoryArgument(2, device.clInput_MatricesData);
-                device.kernelVertexShader.SetMemoryArgument(3, device.clInputOutput_AllBVHNodes);
+            int iCount = m_iNumBVHNodes;
 
-                int iCount = device.m_iNumBVHNodes;
-
-                ComputeEventList eventList = new ComputeEventList();
-                device.cmdQueue.Execute(device.kernelVertexShader, null, new long[] { iCount }, null, eventList);
-                device.cmdQueue.Finish();
-                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                eventList.Clear();
-            }/*);*/
+            ComputeEventList eventList = new ComputeEventList();
+            cmdQueue.Execute(kernelVertexShader, null, new long[] { iCount }, null, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -958,28 +936,22 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
 
-            //Parallel.For(0, m_listOpenCLDevices.Count, index =>
-            int index = 0;
+            for (int i = 0; i < listCLInput_RefitTree_LevelX.Count; i++)
             {
-                OpenCLDevice device = m_listOpenCLDevices[index];
+                int iCount = m_listRefitTree_LevelXSizes[i];
+                if (iCount == 0) { continue; }
 
-                for (int i = 0; i < device.listCLInput_RefitTree_LevelX.Count; i++)
-                {
-                    int iCount = m_listRefitTree_LevelXSizes[i];
-                    if (iCount == 0) { continue; }
+                ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = listCLInput_RefitTree_LevelX[i];
 
-                    ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = device.listCLInput_RefitTree_LevelX[i];
-
-                    device.KernelRefitTree_LevelX.SetMemoryArgument(0, clInput_RefitTree_LevelX);
-                    device.KernelRefitTree_LevelX.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
-                    
-                    ComputeEventList eventList = new ComputeEventList();
-                    device.cmdQueue.Execute(device.KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
-                    device.cmdQueue.Finish();
-                    foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                    eventList.Clear();
-                }
-            }/*);*/
+                KernelRefitTree_LevelX.SetMemoryArgument(0, clInput_RefitTree_LevelX);
+                KernelRefitTree_LevelX.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
+                
+                ComputeEventList eventList = new ComputeEventList();
+                cmdQueue.Execute(KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
+                cmdQueue.Finish();
+                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+                eventList.Clear();
+            }
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -988,67 +960,61 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
 
-            //Parallel.For(0, m_listOpenCLDevices.Count, index =>
-            int index = 0;
-            {
-                OpenCLDevice device = m_listOpenCLDevices[index];
+            // pos
+            Float3 inPos;
+            inPos.m_X = pos.X;
+            inPos.m_Y = pos.Y;
+            inPos.m_Z = pos.Z;
 
-                // pos
-                Float3 inPos;
-                inPos.m_X = pos.X;
-                inPos.m_Y = pos.Y;
-                inPos.m_Z = pos.Z;
+            // at
+            Float3 inAt;
+            inAt.m_X = at.X;
+            inAt.m_Y = at.Y;
+            inAt.m_Z = at.Z;
 
-                // at
-                Float3 inAt;
-                inAt.m_X = at.X;
-                inAt.m_Y = at.Y;
-                inAt.m_Z = at.Z;
+            // at
+            up = up.Normalized();
+            Float3 inUp;
+            inUp.m_X = up.X;
+            inUp.m_Y = up.Y;
+            inUp.m_Z = up.Z;
 
-                // at
-                up = up.Normalized();
-                Float3 inUp;
-                inUp.m_X = up.X;
-                inUp.m_Y = up.Y;
-                inUp.m_Z = up.Z;
+            // dir
+            Vector3 dir = (at - pos).Normalized();
+            Float3 inDir;
+            inDir.m_X = dir.X;
+            inDir.m_Y = dir.Y;
+            inDir.m_Z = dir.Z;
 
-                // dir
-                Vector3 dir = (at - pos).Normalized();
-                Float3 inDir;
-                inDir.m_X = dir.X;
-                inDir.m_Y = dir.Y;
-                inDir.m_Z = dir.Z;
+            // right
+            Vector3 right = Vector3.Cross(dir, up).Normalized();
+            Float3 inRight;
+            inRight.m_X = right.X;
+            inRight.m_Y = right.Y;
+            inRight.m_Z = right.Z;
 
-                // right
-                Vector3 right = Vector3.Cross(dir, up).Normalized();
-                Float3 inRight;
-                inRight.m_X = right.X;
-                inRight.m_Y = right.Y;
-                inRight.m_Z = right.Z;
+            // step
+            float step = angle / ((float)m_iHeight / 2.0f);
 
-                // step
-                float step = angle / ((float)m_iHeight / 2.0f);
-
-                device.KernelCameraRays.SetValueArgument<Float3>(0, inPos);
-                device.KernelCameraRays.SetValueArgument<Float3>(1, inAt);
-                device.KernelCameraRays.SetValueArgument<Float3>(2, inUp);
-                device.KernelCameraRays.SetValueArgument<Float3>(3, inDir);
-                device.KernelCameraRays.SetValueArgument<Float3>(4, inRight);
-                device.KernelCameraRays.SetValueArgument<float>(5, step);
-                device.KernelCameraRays.SetValueArgument<float>(6, angle);
-                device.KernelCameraRays.SetValueArgument<float>(7, zfar);
-                device.KernelCameraRays.SetValueArgument<int>(8, m_iWidth);
-                device.KernelCameraRays.SetValueArgument<int>(9, m_iHeight);
-                device.KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
-                device.KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
-                device.KernelCameraRays.SetMemoryArgument(12, device.clInputOutput_Rays);
-                
-                ComputeEventList eventList = new ComputeEventList();
-                device.cmdQueue.Execute(device.KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
-                device.cmdQueue.Finish();
-                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                eventList.Clear();
-            }/*);*/
+            KernelCameraRays.SetValueArgument<Float3>(0, inPos);
+            KernelCameraRays.SetValueArgument<Float3>(1, inAt);
+            KernelCameraRays.SetValueArgument<Float3>(2, inUp);
+            KernelCameraRays.SetValueArgument<Float3>(3, inDir);
+            KernelCameraRays.SetValueArgument<Float3>(4, inRight);
+            KernelCameraRays.SetValueArgument<float>(5, step);
+            KernelCameraRays.SetValueArgument<float>(6, angle);
+            KernelCameraRays.SetValueArgument<float>(7, zfar);
+            KernelCameraRays.SetValueArgument<int>(8, m_iWidth);
+            KernelCameraRays.SetValueArgument<int>(9, m_iHeight);
+            KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
+            KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
+            KernelCameraRays.SetMemoryArgument(12, clInputOutput_Rays);
+            
+            ComputeEventList eventList = new ComputeEventList();
+            cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1057,51 +1023,32 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
 
-            //Parallel.For(0, m_listOpenCLDevices.Count, index =>
-            int index = 0;
-            {
-                OpenCLDevice device = m_listOpenCLDevices[index];
+            KernelRayShader.SetMemoryArgument(0, clInputOutput_Rays);
+            KernelRayShader.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
+            KernelRayShader.SetValueArgument<int>(2, m_iWidth);
+            KernelRayShader.SetValueArgument<int>(3, m_iHeight);
+            KernelRayShader.SetMemoryArgument(4, clOutput_TextureBuffer);
+            
+            ComputeEventList eventList = new ComputeEventList();
+            cmdQueue.Execute(KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
 
-                device.KernelRayShader.SetMemoryArgument(0, device.clInputOutput_Rays);
-                device.KernelRayShader.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
-                device.KernelRayShader.SetValueArgument<int>(2, m_iWidth);
-                device.KernelRayShader.SetValueArgument<int>(3, m_iHeight);
-                device.KernelRayShader.SetMemoryArgument(4, device.clOutput_TextureBuffer);
-                
-                ComputeEventList eventList = new ComputeEventList();
-                device.cmdQueue.Execute(device.KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
-                device.cmdQueue.Finish();
-                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                eventList.Clear();
-
-                ComputeEventList eventList1 = new ComputeEventList();
-                SysIntX3 offset = new SysIntX3(0, 0, 0);
-                SysIntX3 region = new SysIntX3(m_iWidth, m_iHeight, 4);
-                IntPtr source = device.cmdQueue.Map(device.clOutput_TextureBuffer, true, ComputeMemoryMappingFlags.Read, 0, m_iWidth * m_iHeight * 4, eventList1);
-                device.cmdQueue.Finish();
-                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                eventList.Clear();
-                
-                writeableBitmap.Lock();
-                Win32.CopyMemory(writeableBitmap.BackBuffer, source, (writeableBitmap.BackBufferStride * m_iHeight));
-                writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, m_iWidth, m_iHeight));
-                writeableBitmap.Unlock();
-            }/*);*/
+            SysIntX3 offset = new SysIntX3(0, 0, 0);
+            SysIntX3 region = new SysIntX3(m_iWidth, m_iHeight, 4);
+            IntPtr source = cmdQueue.Map(clOutput_TextureBuffer, true, ComputeMemoryMappingFlags.Read, 0, m_iWidth * m_iHeight * 4, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
+            
+            writeableBitmap.Lock();
+            Win32.CopyMemory(writeableBitmap.BackBuffer, source, m_iWidth * m_iHeight * 4);
+            writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, m_iWidth, m_iHeight));
+            writeableBitmap.Unlock();
 
             m_mtxMutex.ReleaseMutex();
         }
-
-        //void UpdateBitmap(byte[] pixels)
-        //{
-        //    BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
-        //    {
-        //        IntPtr pNative = bmpData.Scan0;
-        //        Marshal.Copy(pixels, 0, pNative, pixels.Length);
-        //    }
-        //    bitmap.UnlockBits(bmpData);
-        //
-        //    //bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-        //}
 
         public WriteableBitmap GetWriteableBitmap()
         {
@@ -1157,39 +1104,20 @@ namespace OpenCLRenderer
         {
             m_mtxMutex.WaitOne();
 
-            //Parallel.For(0, m_listOpenCLDevices.Count, index =>
-            int index = 0;
-            {
-                OpenCLDevice clDevice = m_listOpenCLDevices[index];
+            m_iWidth = iWidth;
+            m_iHeight = iHeight;
 
-                m_iWidth = iWidth;
-                m_iHeight = iHeight;
+            int iSize = iWidth * iHeight;
 
-                int iSize = iWidth * iHeight;
+            // rays
+            if (null != clInputOutput_Rays) { clInputOutput_Rays.Dispose(); clInputOutput_Rays = null; }
+            clInputOutput_Rays = new ComputeBuffer<Ray>(m_Context, ComputeMemoryFlags.ReadWrite, iSize);
 
-                // rays
-                if (null != clDevice.clInputOutput_Rays)
-                {
-                    clDevice.clInputOutput_Rays.Dispose();
-                    clDevice.clInputOutput_Rays = null;
-                }
+            // texture
+            if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
+            clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.ReadWrite, iWidth * iHeight * 4);
 
-                clDevice.clInputOutput_Rays = new ComputeBuffer<Ray>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iSize);
-
-                // texture
-                if (null != clDevice.clOutput_TextureBuffer)
-                {
-                    clDevice.clOutput_TextureBuffer.Dispose();
-                    clDevice.clOutput_TextureBuffer = null;
-                }
-
-                int iLength = iWidth * iHeight * 4;
-                clDevice.clOutput_TextureBuffer = new ComputeBuffer<byte>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iLength);
-
-                clDevice.m_TextureBytes = new byte[iLength];
-
-                writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
-            }
+            writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1205,47 +1133,40 @@ namespace OpenCLRenderer
             m_listRefitTree_LevelXSizes.Clear();
 
             // bufferek letrehozasa, device-onkent
-            //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
-            OpenCLDevice clDevice = m_listOpenCLDevices[0];
+            // texturak betoltese
+            if (null != clInput_Materials) { clInput_Materials.Dispose(); clInput_Materials = null; }
+            
+            if (null != clInput_TexturesData) { clInput_TexturesData.Dispose(); clInput_TexturesData = null; }
+            
+            // matrixok betoltese
+            if (null != clInput_MatricesData) { clInput_MatricesData.Dispose(); clInput_MatricesData = null; }
+            
+            // Global level N
+            foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in listCLInput_RefitTree_LevelX)
             {
-                // texturak betoltese
-                if (null != clDevice.clInput_Materials) { clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
-                
-                if (null != clDevice.clInput_TexturesData) { clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
-                
-                // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
-                
-                // Global level N
-                foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
-                {
-                    clInput_RefitTree_LevelX.Dispose();
-                }
-                clDevice.listCLInput_RefitTree_LevelX.Clear();
-                
-                // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
-
-                // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
-                
-                // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
-
-                // rendertarget
-                if (null != clDevice.clOutput_TextureBuffer) { clDevice.clOutput_TextureBuffer.Dispose(); clDevice.clOutput_TextureBuffer = null; }
-                //if (0 != clDevice.m_iGLTextureId) { GL.DeleteTexture(clDevice.m_iGLTextureId); clDevice.m_iGLTextureId = 0; }
-
-                clDevice.kernelVertexShader.Dispose();
-                clDevice.KernelRefitTree_LevelX.Dispose();
-                clDevice.KernelCameraRays.Dispose();
-                clDevice.KernelRayShader.Dispose();
-                clDevice.cmdQueue.Dispose();
-                clDevice.m_Program.Dispose();
-                clDevice.m_Context.Dispose();
+                clInput_RefitTree_LevelX.Dispose();
             }
+            listCLInput_RefitTree_LevelX.Clear();
+            
+            // global types
+            if (null != clInput_AllBVHNodesType) { clInput_AllBVHNodesType.Dispose(); clInput_AllBVHNodesType = null; }
 
-            m_listOpenCLDevices.Clear();
+            // start global nodes
+            if (null != clInput_AllBVHNodes) { clInput_AllBVHNodes.Dispose(); clInput_AllBVHNodes = null; }
+            
+            // calculating global types
+            if (null != clInputOutput_AllBVHNodes) { clInputOutput_AllBVHNodes.Dispose(); clInputOutput_AllBVHNodes = null; }
+
+            // rendertarget
+            if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
+
+            kernelVertexShader.Dispose();
+            KernelRefitTree_LevelX.Dispose();
+            KernelCameraRays.Dispose();
+            KernelRayShader.Dispose();
+            cmdQueue.Dispose();
+            m_Program.Dispose();
+            m_Context.Dispose();
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1266,41 +1187,33 @@ namespace OpenCLRenderer
 
         int m_iWidth;
         int m_iHeight;
-        //Bitmap bitmap = null;
-        WriteableBitmap writeableBitmap = null;
-
-        List<OpenCLDevice> m_listOpenCLDevices = new List<OpenCLDevice>();
-    }
-
-    class OpenCLDevice
-    {
-        public ComputeContext m_Context;
-        public ComputeProgram m_Program;
-        public ComputeDevice m_Device;
-        public ComputeCommandQueue cmdQueue;
-        public ComputeKernel kernelVertexShader;
-        public ComputeKernel KernelRefitTree_LevelX;
-        public ComputeKernel KernelCameraRays;
-        public ComputeKernel KernelRayShader;
+        
+        // opencl resources
+        ComputeContext m_Context;
+        ComputeProgram m_Program;
+        ComputeDevice m_Device;
+        ComputeCommandQueue cmdQueue;
+        ComputeKernel kernelVertexShader;
+        ComputeKernel KernelRefitTree_LevelX;
+        ComputeKernel KernelCameraRays;
+        ComputeKernel KernelRayShader;
 
         // textures
-        public ComputeBuffer<Material> clInput_Materials = null;
-        public ComputeBuffer<byte> clInput_TexturesData = null;
+        ComputeBuffer<Material> clInput_Materials = null;
+        ComputeBuffer<byte> clInput_TexturesData = null;
 
         // matrices
-        public ComputeBuffer<Matrix> clInput_MatricesData = null;
+        ComputeBuffer<Matrix> clInput_MatricesData = null;
 
-        public int m_iNumBVHNodes;
-        public ComputeBuffer<int> clInput_AllBVHNodesType = null;
-        public ComputeBuffer<BVHNode> clInput_AllBVHNodes = null;
-        public ComputeBuffer<BVHNode> clInputOutput_AllBVHNodes = null;
-        public List<ComputeBuffer<BVHNode> > listCLInput_RefitTree_LevelX = new List<ComputeBuffer<BVHNode> >();
-        public ComputeBuffer<Ray> clInputOutput_Rays = null;
+        int m_iNumBVHNodes;
+        ComputeBuffer<int> clInput_AllBVHNodesType = null;
+        ComputeBuffer<BVHNode> clInput_AllBVHNodes = null;
+        ComputeBuffer<BVHNode> clInputOutput_AllBVHNodes = null;
+        List<ComputeBuffer<BVHNode>> listCLInput_RefitTree_LevelX = new List<ComputeBuffer<BVHNode>>();
+        ComputeBuffer<Ray> clInputOutput_Rays = null;
 
-        //public int m_iGLTextureId = 0;
-        public ComputeBuffer<byte> clOutput_TextureBuffer = null;
-        public byte[] m_TextureBytes;
-        
-        
+        // rendertarget
+        ComputeBuffer<byte> clOutput_TextureBuffer = null;
+        WriteableBitmap writeableBitmap = null;
     }
 }
