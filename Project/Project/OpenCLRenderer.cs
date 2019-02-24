@@ -179,6 +179,9 @@ namespace OpenCLRenderer
                     // CameraRays
                     KernelCameraRays = m_Program.CreateKernel("Main_CameraRays");
 
+                    // ClearScreen
+                    KernelClearShader = m_Program.CreateKernel("Main_ClearShader");
+
                     // RayShader
                     KernelRayShader = m_Program.CreateKernel("Main_RayShader");
                     
@@ -1019,6 +1022,27 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
+        public void RunClearScreenShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
+        {
+            m_mtxMutex.WaitOne();
+
+            KernelClearShader.SetValueArgument<int>(0, m_iWidth);
+            KernelClearShader.SetValueArgument<int>(1, m_iHeight);
+            KernelClearShader.SetValueArgument<byte>(2, iRed);
+            KernelClearShader.SetValueArgument<byte>(3, iGreen);
+            KernelClearShader.SetValueArgument<byte>(4, iBlue);
+            KernelClearShader.SetValueArgument<byte>(5, iAlpha);
+            KernelClearShader.SetMemoryArgument(6, clOutput_TextureBuffer);
+
+            ComputeEventList eventList = new ComputeEventList();
+            cmdQueue.Execute(KernelClearShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
         public void RunRayShader()
         {
             m_mtxMutex.WaitOne();
@@ -1115,7 +1139,7 @@ namespace OpenCLRenderer
 
             // texture
             if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
-            clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.ReadWrite, iWidth * iHeight * 4);
+            clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.WriteOnly, iWidth * iHeight * 4);
 
             writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
 
@@ -1196,6 +1220,7 @@ namespace OpenCLRenderer
         ComputeKernel kernelVertexShader;
         ComputeKernel KernelRefitTree_LevelX;
         ComputeKernel KernelCameraRays;
+        ComputeKernel KernelClearShader;
         ComputeKernel KernelRayShader;
 
         // textures
