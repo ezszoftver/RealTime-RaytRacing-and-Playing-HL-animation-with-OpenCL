@@ -179,9 +179,6 @@ namespace OpenCLRenderer
                     // CameraRays
                     KernelCameraRays = m_Program.CreateKernel("Main_CameraRays");
 
-                    // ClearScreen
-                    KernelClearShader = m_Program.CreateKernel("Main_ClearShader");
-
                     // RayShader
                     KernelRayShader = m_Program.CreateKernel("Main_RayShader");
                     
@@ -1022,28 +1019,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void RunClearScreenShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
-        {
-            m_mtxMutex.WaitOne();
-
-            KernelClearShader.SetValueArgument<int>(0, m_iWidth);
-            KernelClearShader.SetValueArgument<int>(1, m_iHeight);
-            KernelClearShader.SetValueArgument<byte>(2, iRed);
-            KernelClearShader.SetValueArgument<byte>(3, iGreen);
-            KernelClearShader.SetValueArgument<byte>(4, iBlue);
-            KernelClearShader.SetValueArgument<byte>(5, iAlpha);
-            KernelClearShader.SetMemoryArgument(6, clOutput_TextureBuffer);
-
-            ComputeEventList eventList = new ComputeEventList();
-            cmdQueue.Execute(KernelClearShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
-            cmdQueue.Finish();
-            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-            eventList.Clear();
-
-            m_mtxMutex.ReleaseMutex();
-        }
-
-        public void RunRayShader()
+        public void RunRayShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
         {
             m_mtxMutex.WaitOne();
 
@@ -1051,7 +1027,11 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
             KernelRayShader.SetValueArgument<int>(2, m_iWidth);
             KernelRayShader.SetValueArgument<int>(3, m_iHeight);
-            KernelRayShader.SetMemoryArgument(4, clOutput_TextureBuffer);
+            KernelRayShader.SetValueArgument<byte>(4, iRed);
+            KernelRayShader.SetValueArgument<byte>(5, iGreen);
+            KernelRayShader.SetValueArgument<byte>(6, iBlue);
+            KernelRayShader.SetValueArgument<byte>(7, iAlpha);
+            KernelRayShader.SetMemoryArgument(8, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
@@ -1220,7 +1200,6 @@ namespace OpenCLRenderer
         ComputeKernel kernelVertexShader;
         ComputeKernel KernelRefitTree_LevelX;
         ComputeKernel KernelCameraRays;
-        ComputeKernel KernelClearShader;
         ComputeKernel KernelRayShader;
 
         // textures

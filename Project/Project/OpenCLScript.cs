@@ -670,33 +670,17 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vect
     inout_Rays[id] = ray;
 }
 
-__kernel void Main_ClearShader(int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
-{
-    int pixelx = get_global_id(0);
-    int pixely = get_global_id(1);
-    int id = (in_Width * pixely * 4) + (pixelx * 4);
-
-    out_Texture[id + 0] = blue;
-    out_Texture[id + 1] = green;
-    out_Texture[id + 2] = red;
-    out_Texture[id + 3] = alpha;
-}
-
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, int in_Width, int in_Height, __global unsigned char *out_Texture)
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
     int id = (in_Width * pixely * 4) + (pixelx * 4);
     
-    //unsigned char red   = 255;
-    //unsigned char green = 0;
-    //unsigned char blue  = 0;
-    //unsigned char alpha  = 255;
-    //
-    //out_Texture[id + 0] = blue;
-    //out_Texture[id + 1] = green;
-    //out_Texture[id + 2] = red;
-    //out_Texture[id + 3] = alpha;
+    // Ray hit not found
+    out_Texture[id + 0] = blue;
+    out_Texture[id + 1] = green;
+    out_Texture[id + 2] = red;
+    out_Texture[id + 3] = alpha;
 }
 
 ";
