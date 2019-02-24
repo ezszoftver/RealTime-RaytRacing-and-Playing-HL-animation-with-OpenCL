@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,20 +37,6 @@ namespace Project
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            
-
-            m_GLControl = new OpenTK.GLControl(new OpenTK.Graphics.GraphicsMode(new OpenTK.Graphics.ColorFormat(8, 8, 8, 8), 24, 0, 4), 3, 0, OpenTK.Graphics.GraphicsContextFlags.Default);
-            m_GLControl.VSync = false;
-            m_GLControl.Resize += M_GLControl_Resize;
-            m_GLControl.Load += M_GLControl_Load;
-
-            form.Child = m_GLControl;
-        }
-
-        private void M_GLControl_Load(object sender, EventArgs e)
-        {
-            m_GLControl.MakeCurrent();
-
             m_Scene = new OpenCLRenderer.Scene();
             m_Scene.CreateDevice();
 
@@ -168,13 +156,6 @@ namespace Project
             
             m_Scene.Commit();
 
-            GL.ClearColor(0.5f, 0.5f, 1.0f, 1.0f);
-
-            GL.Enable(EnableCap.DepthTest);
-            GL.DepthFunc(DepthFunction.Lequal);
-            GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
             m_Timer = new DispatcherTimer();
             m_Timer.Tick += Timer_Tick;
             m_Timer.Interval = TimeSpan.FromMilliseconds(0);
@@ -182,18 +163,6 @@ namespace Project
             m_ElapsedTime = m_CurrentTime = DateTime.Now;
             m_fSec = 0.0f;
             m_Timer.Start();
-        }
-
-        private void M_GLControl_Resize(object sender, EventArgs e)
-        {
-            if (null == m_Scene) { return; }
-
-            int iWidth = (int)(sender as OpenTK.GLControl).Width;
-            int iHeight = (int)(sender as OpenTK.GLControl).Height;
-
-            GL.Viewport(0, 0, iWidth, iHeight);
-
-            m_Scene.Resize(iWidth, iHeight);
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -218,18 +187,13 @@ namespace Project
             m_Scene.SetCamera(new Vector3(0, 0, 10), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
             m_Scene.RunRayShader();
 
-            // render
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
-            ;
-            
-            m_GLControl.SwapBuffers();
-
-            //Bitmap bitmap = m_Scene.GetBitmap();
-            //image.Source = BitmapToImageSource(bitmap);
+            image.Source = m_Scene.GetWriteableBitmap();
         }
 
-        OpenTK.GLControl m_GLControl = null;
+        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
+        public static extern void CopyMemory(IntPtr dest, IntPtr source, int Length);
+
+        WriteableBitmap writeableBitmap = null;
         OpenCLRenderer.Scene m_Scene = null;
         DispatcherTimer m_Timer = null;
         int FPS = 0;
@@ -237,33 +201,6 @@ namespace Project
         DateTime m_CurrentTime;
         float m_fDeltaTime;
         float m_fSec;
-
-        //BitmapImage BitmapToImageSource(Bitmap bitmap)
-        //{
-        //    MemoryStream memory = new MemoryStream();
-        //    bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
-        //    memory.Position = 0;
-        //
-        //    BitmapImage bitmapImage = new BitmapImage();
-        //    bitmapImage.BeginInit();
-        //    bitmapImage.DecodePixelWidth = bitmap.Width;
-        //    bitmapImage.DecodePixelHeight = bitmap.Height;
-        //    bitmapImage.StreamSource = memory;
-        //    bitmapImage.EndInit();
-        //    bitmapImage.Freeze();
-        //
-        //    return bitmapImage;
-        //}
-
-        //private void Image_SizeChanged(object sender, SizeChangedEventArgs e)
-        //{
-        //    if (null == m_Scene) { return; }
-        //
-        //    int iWidth = (int)image.ActualWidth;
-        //    int iHeight = (int)image.ActualHeight;
-        //    m_Scene.Resize(iWidth, iHeight);
-        //}
-
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
@@ -278,12 +215,16 @@ namespace Project
                 m_Scene.Dispose();
                 m_Scene = null;
             }
+        }
 
-            if (null != m_GLControl)
-            {
-                m_GLControl.Dispose();
-                m_GLControl = null;
-            }           
+        private void Image_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (null == m_Scene) { return; }
+
+            int iWidth = (int)image.ActualWidth;
+            int iHeight = (int)image.ActualHeight;
+
+            m_Scene.Resize(iWidth, iHeight);
         }
     }
 }

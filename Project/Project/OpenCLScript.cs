@@ -16,15 +16,25 @@ namespace OpenCLRenderer
 
 typedef struct
 {
-    float4 row0;
-    float4 row1;
-    float4 row2;
-    float4 row3;
-    
-    float4 column0;
-    float4 column1;
-    float4 column2;
-    float4 column3;
+    float m11;
+    float m12;
+    float m13;
+    float m14;
+
+    float m21;
+    float m22;
+    float m23;
+    float m24;
+
+    float m31;
+    float m32;
+    float m33;
+    float m34;
+
+    float m41;
+    float m42;
+    float m43;
+    float m44;
 }
 Matrix4x4;
 
@@ -53,10 +63,10 @@ float4 Mult_Matrix4x4Float3(Matrix4x4 T, float3 v, float w)
 
     float4 v1 = ToFloat4(v.x, v.y, v.z, w);
 
-    ret.x = dot(T.row0, v1);
-    ret.y = dot(T.row1, v1);
-    ret.z = dot(T.row2, v1);
-    ret.w = dot(T.row3, v1);
+    ret.x = dot(ToFloat4(T.m11, T.m12, T.m13, T.m14), v1);
+    ret.y = dot(ToFloat4(T.m21, T.m22, T.m23, T.m24), v1);
+    ret.z = dot(ToFloat4(T.m31, T.m32, T.m33, T.m34), v1);
+    ret.w = dot(ToFloat4(T.m41, T.m42, T.m43, T.m44), v1);
 
     return ret;
 }
@@ -65,10 +75,10 @@ float4 Mult_Matrix4x4Float4(Matrix4x4 T, float4 v)
 {
     float4 ret;
 
-    ret.x = dot(T.row0, v);
-    ret.y = dot(T.row1, v);
-    ret.z = dot(T.row2, v);
-    ret.w = dot(T.row3, v);
+    ret.x = dot(ToFloat4(T.m11, T.m12, T.m13, T.m14), v);
+    ret.y = dot(ToFloat4(T.m21, T.m22, T.m23, T.m24), v);
+    ret.z = dot(ToFloat4(T.m31, T.m32, T.m33, T.m34), v);
+    ret.w = dot(ToFloat4(T.m41, T.m42, T.m43, T.m44), v);
 
     return ret;
 }
@@ -77,23 +87,29 @@ Matrix4x4 Mult_Matrix4x4Float(Matrix4x4 T, float scale)
 {
     Matrix4x4 ret;
 
-    ret.row0 = T.row0;
-    ret.row1 = T.row1;
-    ret.row2 = T.row2;
-    ret.row3 = T.row3;
+    ret.m11 = T.m11;
+    ret.m12 = T.m12;
+    ret.m13 = T.m13;
+    ret.m14 = T.m14;
 
-    ret.column0 = T.column0;
-    ret.column1 = T.column1;
-    ret.column2 = T.column2;
-    ret.column3 = T.column3;
+    ret.m21 = T.m21;
+    ret.m22 = T.m22;
+    ret.m23 = T.m23;
+    ret.m24 = T.m24;
 
-    ret.row0.x *= scale;
-    ret.row1.y *= scale;
-    ret.row2.z *= scale;
+    ret.m31 = T.m31;
+    ret.m32 = T.m32;
+    ret.m33 = T.m33;
+    ret.m34 = T.m34;
 
-    ret.column0.x *= scale;
-    ret.column1.y *= scale;
-    ret.column2.z *= scale;
+    ret.m41 = T.m41;
+    ret.m42 = T.m42;
+    ret.m43 = T.m43;
+    ret.m44 = T.m44;
+
+    ret.m11 *= scale;
+    ret.m22 *= scale;
+    ret.m33 *= scale;
 
     return ret;
 }
@@ -102,65 +118,55 @@ Matrix4x4 Mult_Matrix4x4Matrix4x4(Matrix4x4 T2, Matrix4x4 T1)
 {
     Matrix4x4 ret;
 
-    float m00 = dot(T1.row0, T2.column0);
-    float m01 = dot(T1.row0, T2.column1);
-    float m02 = dot(T1.row0, T2.column2);
-    float m03 = dot(T1.row0, T2.column3);
+    float4 T1row1 = ToFloat4(T1.m11, T1.m12, T1.m13, T1.m14);
+    float4 T1row2 = ToFloat4(T1.m21, T1.m22, T1.m23, T1.m24);
+    float4 T1row3 = ToFloat4(T1.m31, T1.m32, T1.m33, T1.m34);
+    float4 T1row4 = ToFloat4(T1.m41, T1.m42, T1.m43, T1.m44);
+
+    float4 T2column1 = ToFloat4(T2.m11, T2.m21, T2.m31, T2.m41);
+    float4 T2column2 = ToFloat4(T2.m12, T2.m22, T2.m32, T2.m42);
+    float4 T2column3 = ToFloat4(T2.m13, T2.m23, T2.m33, T2.m43);
+    float4 T2column4 = ToFloat4(T2.m14, T2.m24, T2.m34, T2.m44);
+
+    float m11 = dot(T1row1, T2column1);
+    float m12 = dot(T1row1, T2column2);
+    float m13 = dot(T1row1, T2column3);
+    float m14 = dot(T1row1, T2column4);
     
-    float m10 = dot(T1.row1, T2.column0);
-    float m11 = dot(T1.row1, T2.column1);
-    float m12 = dot(T1.row1, T2.column2);
-    float m13 = dot(T1.row1, T2.column3);
+    float m21 = dot(T1row2, T2column1);
+    float m22 = dot(T1row2, T2column2);
+    float m23 = dot(T1row2, T2column3);
+    float m24 = dot(T1row2, T2column4);
     
-    float m20 = dot(T1.row2, T2.column0);
-    float m21 = dot(T1.row2, T2.column1);
-    float m22 = dot(T1.row2, T2.column2);
-    float m23 = dot(T1.row2, T2.column3);
+    float m31 = dot(T1row3, T2column1);
+    float m32 = dot(T1row3, T2column2);
+    float m33 = dot(T1row3, T2column3);
+    float m34 = dot(T1row3, T2column4);
     
-    float m30 = dot(T1.row3, T2.column0);
-    float m31 = dot(T1.row3, T2.column1);
-    float m32 = dot(T1.row3, T2.column2);
-    float m33 = dot(T1.row3, T2.column3);
+    float m41 = dot(T1row4, T2column1);
+    float m42 = dot(T1row4, T2column2);
+    float m43 = dot(T1row4, T2column3);
+    float m44 = dot(T1row4, T2column4);
 
-    ret.row0.x = m00;
-    ret.row0.y = m01;
-    ret.row0.z = m02;
-    ret.row0.w = m03;
+    ret.m11 = m11;
+    ret.m12 = m12;
+    ret.m13 = m13;
+    ret.m14 = m14;
 
-    ret.row1.x = m10;
-    ret.row1.y = m11;
-    ret.row1.z = m12;
-    ret.row1.w = m13;
+    ret.m21 = m21;
+    ret.m22 = m22;
+    ret.m23 = m23;
+    ret.m24 = m24;
 
-    ret.row2.x = m20;
-    ret.row2.y = m21;
-    ret.row2.z = m22;
-    ret.row2.w = m23;
+    ret.m31 = m31;
+    ret.m32 = m32;
+    ret.m33 = m33;
+    ret.m34 = m34;
 
-    ret.row3.x = m30;
-    ret.row3.y = m31;
-    ret.row3.z = m32;
-    ret.row3.w = m33;
-
-    ret.column0 = m00;
-    ret.column0 = m10;
-    ret.column0 = m20;
-    ret.column0 = m30;
-
-    ret.column1 = m01;
-    ret.column1 = m11;
-    ret.column1 = m21;
-    ret.column1 = m31;
-
-    ret.column2 = m02;
-    ret.column2 = m12;
-    ret.column2 = m22;
-    ret.column2 = m32;
-
-    ret.column3 = m03;
-    ret.column3 = m13;
-    ret.column3 = m23;
-    ret.column3 = m33;
+    ret.m41 = m41;
+    ret.m42 = m42;
+    ret.m43 = m43;
+    ret.m44 = m44;
 
     return ret;
 }
@@ -169,10 +175,10 @@ Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
 {
     float m[16] = 
         {  
-            T.row0.x, T.row0.y, T.row0.z, T.row0.w,
-            T.row1.x, T.row1.y, T.row1.z, T.row1.w,
-            T.row2.x, T.row2.y, T.row2.z, T.row2.w,
-            T.row3.x, T.row3.y, T.row3.z, T.row3.w,
+            T.m11, T.m12, T.m13, T.m14,
+            T.m21, T.m22, T.m23, T.m24,
+            T.m31, T.m32, T.m33, T.m34,
+            T.m41, T.m42, T.m43, T.m44
         };
 
     float inv[16], det;
@@ -298,52 +304,12 @@ Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
     for (i = 0; i < 16; i++)
         invOut[i] = inv[i] * det;
 
-    float m00 = invOut[0];  float m01 = invOut[1];  float m02 = invOut[2];  float m03 = invOut[3];
-    float m10 = invOut[4];  float m11 = invOut[5];  float m12 = invOut[6];  float m13 = invOut[7];
-    float m20 = invOut[8];  float m21 = invOut[9];  float m22 = invOut[10]; float m23 = invOut[11];
-    float m30 = invOut[12]; float m31 = invOut[13]; float m32 = invOut[14]; float m33 = invOut[15];
-
     Matrix4x4 ret;
 
-    ret.row0.x = m00;
-    ret.row0.y = m01;
-    ret.row0.z = m02;
-    ret.row0.w = m03;
-
-    ret.row1.x = m10;
-    ret.row1.y = m11;
-    ret.row1.z = m12;
-    ret.row1.w = m13;
-
-    ret.row2.x = m20;
-    ret.row2.y = m21;
-    ret.row2.z = m22;
-    ret.row2.w = m23;
-
-    ret.row3.x = m30;
-    ret.row3.y = m31;
-    ret.row3.z = m32;
-    ret.row3.w = m33;
-
-    ret.column0 = m00;
-    ret.column0 = m10;
-    ret.column0 = m20;
-    ret.column0 = m30;
-
-    ret.column1 = m01;
-    ret.column1 = m11;
-    ret.column1 = m21;
-    ret.column1 = m31;
-
-    ret.column2 = m02;
-    ret.column2 = m12;
-    ret.column2 = m22;
-    ret.column2 = m32;
-
-    ret.column3 = m03;
-    ret.column3 = m13;
-    ret.column3 = m23;
-    ret.column3 = m33;
+    ret.m11 = invOut[0];  ret.m12 = invOut[1];  ret.m13 = invOut[2];  ret.m14 = invOut[3];
+    ret.m21 = invOut[4];  ret.m22 = invOut[5];  ret.m23 = invOut[6];  ret.m24 = invOut[7];
+    ret.m31 = invOut[8];  ret.m32 = invOut[9];  ret.m33 = invOut[10]; ret.m34 = invOut[11];
+    ret.m41 = invOut[12]; ret.m42 = invOut[13]; ret.m43 = invOut[14]; ret.m44 = invOut[15];
 
     return ret;
 }

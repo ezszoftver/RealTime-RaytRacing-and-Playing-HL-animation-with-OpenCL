@@ -11,10 +11,9 @@ using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 
 using OpenTK;
-using OpenTK.Graphics;
-using OpenTK.Graphics.OpenGL;
 using Cloo;
-using PixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
+using System.Windows;
+using System.Windows.Media;
 
 namespace OpenCLRenderer
 {
@@ -129,8 +128,8 @@ namespace OpenCLRenderer
 
     public static class Win32
     {
-        [DllImport("opengl32.dll")]
-        public extern static IntPtr wglGetCurrentDC();
+        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
+        public static extern void CopyMemory(IntPtr dest, IntPtr source, int Length);
     }
 
     class Scene : IDisposable
@@ -155,19 +154,7 @@ namespace OpenCLRenderer
                 //List<ComputeContextProperty> props = new List<ComputeContextProperty>() { p1, p2, p3 };
                 //ComputeContextPropertyList properties = new ComputeContextPropertyList(props);
 
-                
-
-                ComputeContext newContext = null;
-                try
-                {
-                    
-                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
-                }
-                catch (Exception ex)
-                {
-                    ex.ToString();
-                    continue;
-                }
+                ComputeContext newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
 
                 ComputeDevice[] devices = newContext.Devices.ToArray();
 
@@ -182,7 +169,18 @@ namespace OpenCLRenderer
 
                     clDevice.m_Program = new ComputeProgram(clDevice.m_Context, OpenCLScript.GetText());
 
-                    clDevice.m_Program.Build(null, null, null, IntPtr.Zero);
+                    try
+                    {
+                        clDevice.m_Program.Build(null, null, null, IntPtr.Zero);
+                    }
+                    catch (Exception e)
+                    {
+                        e.ToString();
+
+                        string strText = clDevice.m_Program.GetBuildLog(clDevice.m_Device);
+                        MessageBox.Show(strText, "Exception");
+                        Application.Current.Shutdown();
+                    }
 
                     // VertexShader
                     clDevice.kernelVertexShader = clDevice.m_Program.CreateKernel("Main_VertexShader");
@@ -872,22 +870,16 @@ namespace OpenCLRenderer
             //foreach (OpenCLDevice clDevice in m_listOpenCLDevices)
             OpenCLDevice clDevice = m_listOpenCLDevices[0];
             {
-                //ErrorCode error;
-
                 // texturak betoltese
-                if (null != clDevice.clInput_Materials) { /*Cl.ReleaseMemObject(clDevice.clInput_Materials);*/clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
-                //clDevice.clInput_Materials = Cl.CreateBuffer(clDevice.m_Context, MemFlags.CopyHostPtr | MemFlags.ReadOnly, m_listMaterials.ToArray(), out error);
+                if (null != clDevice.clInput_Materials) { clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
                 clDevice.clInput_Materials = new ComputeBuffer<Material>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMaterials.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Materials"); }
 
-                if (null != clDevice.clInput_TexturesData) { /*Cl.ReleaseMemObject(clDevice.clInput_TexturesData);*/clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
+                if (null != clDevice.clInput_TexturesData) { clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
                 clDevice.clInput_TexturesData = new ComputeBuffer<byte>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listTexturesData.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: TexturesData"); }
 
                 // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { /*Cl.ReleaseMemObject(clDevice.clInput_MatricesData);*/clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
+                if (null != clDevice.clInput_MatricesData) { clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
                 clDevice.clInput_MatricesData = new ComputeBuffer<Matrix>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: MatricesData"); }
 
                 // global bvh nodes, count
                 clDevice.m_iNumBVHNodes = listAllBVHNodes.Count;
@@ -895,7 +887,6 @@ namespace OpenCLRenderer
                 // Global level N
                 foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
                 {
-                    //Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
                     clInput_RefitTree_LevelX.Dispose();
                 }
                 clDevice.listCLInput_RefitTree_LevelX.Clear();
@@ -903,24 +894,20 @@ namespace OpenCLRenderer
                 {
                     // levels
                     ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listLevelXBVHs.ToArray());
-                    //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInput_RefitTree_LevelX"); }
                     clDevice.listCLInput_RefitTree_LevelX.Add(clInput_RefitTree_LevelX);
                 }
 
                 // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType);*/clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
+                if (null != clDevice.clInput_AllBVHNodesType) { clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
                 clDevice.clInput_AllBVHNodesType = new ComputeBuffer<int>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodesType.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodesType"); }
 
                 // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes);*/clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
+                if (null != clDevice.clInput_AllBVHNodes) { clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
                 clDevice.clInput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Input AllBVHNodes"); }
 
                 // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes);*/clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
+                if (null != clDevice.clInputOutput_AllBVHNodes) { clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
                 clDevice.clInputOutput_AllBVHNodes = new ComputeBuffer<BVHNode>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite | ComputeMemoryFlags.CopyHostPointer, listAllBVHNodes.ToArray());
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: Output AllBVHNodes"); }
             }
 
             listAllBVHNodes.Clear();
@@ -948,37 +935,20 @@ namespace OpenCLRenderer
             //Parallel.For(0, m_listOpenCLDevices.Count, index =>
             int index = 0;
             {
-                //ErrorCode error;
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
                 device.kernelVertexShader.SetMemoryArgument(0, device.clInput_AllBVHNodesType);
                 device.kernelVertexShader.SetMemoryArgument(1, device.clInput_AllBVHNodes);
                 device.kernelVertexShader.SetMemoryArgument(2, device.clInput_MatricesData);
                 device.kernelVertexShader.SetMemoryArgument(3, device.clInputOutput_AllBVHNodes);
-                //Cl.SetKernelArg(device.kernelVertexShader, 0, device.clInput_AllBVHNodesType);
-                //Cl.SetKernelArg(device.kernelVertexShader, 1, device.clInput_AllBVHNodes);
-                //Cl.SetKernelArg(device.kernelVertexShader, 2, device.clInput_MatricesData);
-                //Cl.SetKernelArg(device.kernelVertexShader, 3, device.clInputOutput_AllBVHNodes);
 
-                //Event clevent;
                 int iCount = device.m_iNumBVHNodes;
-                //IntPtr intptrCount = new IntPtr(iCount);
 
                 ComputeEventList eventList = new ComputeEventList();
-                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
-                commands.Execute(device.kernelVertexShader, null, new long[] { iCount }, null, eventList);
-                commands.Finish();
-                commands.Dispose();
-                foreach (ComputeEventBase eventBase in eventList)
-                {
-                    eventBase.Dispose();
-                }
+                device.cmdQueue.Execute(device.kernelVertexShader, null, new long[] { iCount }, null, eventList);
+                device.cmdQueue.Finish();
+                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
                 eventList.Clear();
-
-                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.kernelVertexShader, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
-                //Cl.Finish(device.cmdQueue);
-                //if (error != ErrorCode.Success) { throw new Exception("RunVertexShader: Cl.EnqueueNDRangeKernel"); }
-                //Cl.ReleaseEvent(clevent);
             }/*);*/
 
             m_mtxMutex.ReleaseMutex();
@@ -993,36 +963,20 @@ namespace OpenCLRenderer
             {
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                //ErrorCode error;
-                
                 for (int i = 0; i < device.listCLInput_RefitTree_LevelX.Count; i++)
                 {
                     int iCount = m_listRefitTree_LevelXSizes[i];
                     if (iCount == 0) { continue; }
 
-                    //Event clevent;
-
                     ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = device.listCLInput_RefitTree_LevelX[i];
 
                     device.KernelRefitTree_LevelX.SetMemoryArgument(0, clInput_RefitTree_LevelX);
                     device.KernelRefitTree_LevelX.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
-                    //Cl.SetKernelArg(device.KernelRefitTree_LevelX, 0, clInput_RefitTree_LevelX);
-                    //Cl.SetKernelArg(device.KernelRefitTree_LevelX, 1, device.clInputOutput_AllBVHNodes);
-
-                    //IntPtr intptrCount = new IntPtr(iCount);
-                    //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRefitTree_LevelX, 1, new IntPtr[] { new IntPtr(0) }, new IntPtr[] { intptrCount }, null, 0, null, out clevent);
-                    //Cl.Finish(device.cmdQueue);
-                    //if (error != ErrorCode.Success) { throw new Exception("RunRefitTree: Cl.EnqueueNDRangeKernel"); }
-                    //Cl.ReleaseEvent(clevent);
+                    
                     ComputeEventList eventList = new ComputeEventList();
-                    ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
-                    commands.Execute(device.KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
-                    commands.Finish();
-                    commands.Dispose();
-                    foreach (ComputeEventBase eventBase in eventList)
-                    {
-                        eventBase.Dispose();
-                    }
+                    device.cmdQueue.Execute(device.KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
+                    device.cmdQueue.Finish();
+                    foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
                     eventList.Clear();
                 }
             }/*);*/
@@ -1075,13 +1029,6 @@ namespace OpenCLRenderer
                 // step
                 float step = angle / ((float)m_iHeight / 2.0f);
 
-                //ErrorCode error;
-                //Event clevent;
-
-                //IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
-                //IntPtr floatSize = new IntPtr(Marshal.SizeOf<float>());
-                //IntPtr Float3Size = new IntPtr(Marshal.SizeOf<Float3>());
-
                 device.KernelCameraRays.SetValueArgument<Float3>(0, inPos);
                 device.KernelCameraRays.SetValueArgument<Float3>(1, inAt);
                 device.KernelCameraRays.SetValueArgument<Float3>(2, inUp);
@@ -1095,33 +1042,11 @@ namespace OpenCLRenderer
                 device.KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
                 device.KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
                 device.KernelCameraRays.SetMemoryArgument(12, device.clInputOutput_Rays);
-                //Cl.SetKernelArg(device.KernelCameraRays, 0, Float3Size, inPos);
-                //Cl.SetKernelArg(device.KernelCameraRays, 1, Float3Size, inAt);
-                //Cl.SetKernelArg(device.KernelCameraRays, 2, Float3Size, inUp);
-                //Cl.SetKernelArg(device.KernelCameraRays, 3, Float3Size, inDir);
-                //Cl.SetKernelArg(device.KernelCameraRays, 4, Float3Size, inRight);
-                //Cl.SetKernelArg(device.KernelCameraRays, 5, floatSize, step);
-                //Cl.SetKernelArg(device.KernelCameraRays, 6, floatSize, angle);
-                //Cl.SetKernelArg(device.KernelCameraRays, 7, floatSize, zfar);
-                //Cl.SetKernelArg(device.KernelCameraRays, 8, intSize, m_iWidth);
-                //Cl.SetKernelArg(device.KernelCameraRays, 9, intSize, m_iHeight);
-                //Cl.SetKernelArg(device.KernelCameraRays, 10, intSize, m_iWidth / 2);
-                //Cl.SetKernelArg(device.KernelCameraRays, 11, intSize, m_iHeight / 2);
-                //Cl.SetKernelArg(device.KernelCameraRays, 12, device.clInputOutput_Rays);
-
-                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelCameraRays, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
-                //Cl.Finish(device.cmdQueue);
-                //if (error != ErrorCode.Success) { throw new Exception("KernelCameraRays: Cl.EnqueueNDRangeKernel"); }
-                //Cl.ReleaseEvent(clevent);
+                
                 ComputeEventList eventList = new ComputeEventList();
-                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
-                commands.Execute(device.KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
-                commands.Finish();
-                commands.Dispose();
-                foreach (ComputeEventBase eventBase in eventList)
-                {
-                    eventBase.Dispose();
-                }
+                device.cmdQueue.Execute(device.KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+                device.cmdQueue.Finish();
+                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
                 eventList.Clear();
             }/*);*/
 
@@ -1137,53 +1062,36 @@ namespace OpenCLRenderer
             {
                 OpenCLDevice device = m_listOpenCLDevices[index];
 
-                //Event clevent;
-                //ErrorCode error;
-
-                //IntPtr intSize = new IntPtr(Marshal.SizeOf<int>());
-
                 device.KernelRayShader.SetMemoryArgument(0, device.clInputOutput_Rays);
                 device.KernelRayShader.SetMemoryArgument(1, device.clInputOutput_AllBVHNodes);
                 device.KernelRayShader.SetValueArgument<int>(2, m_iWidth);
                 device.KernelRayShader.SetValueArgument<int>(3, m_iHeight);
-                device.KernelRayShader.SetMemoryArgument(4, device.clOutput_Texture);
-                //Cl.SetKernelArg(device.KernelRayShader, 0, device.clInputOutput_Rays);
-                //Cl.SetKernelArg(device.KernelRayShader, 1, device.clInputOutput_AllBVHNodes);
-                //Cl.SetKernelArg(device.KernelRayShader, 2, intSize, m_iWidth);
-                //Cl.SetKernelArg(device.KernelRayShader, 3, intSize, m_iHeight);
-                //Cl.SetKernelArg(device.KernelRayShader, 4, device.clOutput_Texture);
-
-                //error = Cl.EnqueueNDRangeKernel(device.cmdQueue, device.KernelRayShader, 2, new IntPtr[] { new IntPtr(0) }, new IntPtr[2] { new IntPtr(m_iWidth), new IntPtr(m_iHeight) }, null, 0, null, out clevent);
-                //Cl.Finish(device.cmdQueue);
-                //if (error != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueNDRangeKernel"); }
-                //Cl.ReleaseEvent(clevent);
+                device.KernelRayShader.SetMemoryArgument(4, device.clOutput_TextureBuffer);
+                
                 ComputeEventList eventList = new ComputeEventList();
-                ComputeCommandQueue commands = new ComputeCommandQueue(device.m_Context, device.m_Device, ComputeCommandQueueFlags.None);
-                commands.Execute(device.KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
-                commands.Finish();
-                commands.Dispose();
-                foreach (ComputeEventBase eventBase in eventList)
-                {
-                    eventBase.Dispose();
-                }
+                device.cmdQueue.Execute(device.KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+                device.cmdQueue.Finish();
+                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
                 eventList.Clear();
+
+                ComputeEventList eventList1 = new ComputeEventList();
+                SysIntX3 offset = new SysIntX3(0, 0, 0);
+                SysIntX3 region = new SysIntX3(m_iWidth, m_iHeight, 4);
+                IntPtr source = device.cmdQueue.Map(device.clOutput_TextureBuffer, true, ComputeMemoryMappingFlags.Read, 0, m_iWidth * m_iHeight * 4, eventList1);
+                device.cmdQueue.Finish();
+                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+                eventList.Clear();
+                
+                writeableBitmap.Lock();
+                Win32.CopyMemory(writeableBitmap.BackBuffer, source, (writeableBitmap.BackBufferStride * m_iHeight));
+                writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, m_iWidth, m_iHeight));
+                writeableBitmap.Unlock();
             }/*);*/
-
-            // get image
-            //ErrorCode error0;
-            //OpenCLDevice device0 = m_listOpenCLDevices[0];
-            //Event clevent0;
-            //error0 = Cl.EnqueueReadBuffer(device0.cmdQueue, device0.clOutput_Texture, Bool.True, 0, m_TextureBytes.Length, m_TextureBytes, 0, null, out clevent0);
-            //Cl.Finish(device0.cmdQueue);
-            //if (error0 != ErrorCode.Success) { throw new Exception("KernelRayShader: Cl.EnqueueReadBuffer"); }
-            //Cl.ReleaseEvent(clevent0);
-
-            //UpdateBitmap(m_TextureBytes);
 
             m_mtxMutex.ReleaseMutex();
         }
 
-        //Bitmap UpdateBitmap(byte[] pixels)
+        //void UpdateBitmap(byte[] pixels)
         //{
         //    BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
         //    {
@@ -1192,15 +1100,13 @@ namespace OpenCLRenderer
         //    }
         //    bitmap.UnlockBits(bmpData);
         //
-        //    bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-        //
-        //    return bitmap;
+        //    //bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
         //}
 
-        //public Bitmap GetBitmap()
-        //{
-        //    return bitmap;
-        //}
+        public WriteableBitmap GetWriteableBitmap()
+        {
+            return writeableBitmap;
+        }
 
         static BBox GenBBox(Triangle tri)
         {
@@ -1261,70 +1167,31 @@ namespace OpenCLRenderer
 
                 int iSize = iWidth * iHeight;
 
-                //ErrorCode error;
-
                 // rays
                 if (null != clDevice.clInputOutput_Rays)
                 {
-                    //Cl.ReleaseMemObject(clDevice.clInputOutput_Rays);
                     clDevice.clInputOutput_Rays.Dispose();
                     clDevice.clInputOutput_Rays = null;
                 }
 
-                clDevice.clInputOutput_Rays = new ComputeBuffer<Ray>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iSize);//Cl.CreateBuffer<Ray>(clDevice.m_Context, MemFlags.ReadWrite, iSize, out error);
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clInputOutput_Rays"); }
-
-                ;
+                clDevice.clInputOutput_Rays = new ComputeBuffer<Ray>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iSize);
 
                 // texture
-                if (null != clDevice.clOutput_Texture)
+                if (null != clDevice.clOutput_TextureBuffer)
                 {
-                    //Cl.ReleaseMemObject(clDevice.clOutput_Texture);
-                    clDevice.clOutput_Texture.Dispose();
-                    clDevice.clOutput_Texture = null;
+                    clDevice.clOutput_TextureBuffer.Dispose();
+                    clDevice.clOutput_TextureBuffer = null;
                 }
 
-                if (0 != clDevice.m_iGLTextureId)
-                {
-                    GL.DeleteTexture(clDevice.m_iGLTextureId);
-                    clDevice.m_iGLTextureId = 0;
-                }
+                int iLength = iWidth * iHeight * 4;
+                clDevice.clOutput_TextureBuffer = new ComputeBuffer<byte>(clDevice.m_Context, ComputeMemoryFlags.ReadWrite, iLength);
 
-                clDevice.m_iGLTextureId = GenerateGLTexture(iWidth, iHeight);
-                clDevice.clOutput_Texture = ComputeImage2D.CreateFromGLTexture2D(clDevice.m_Context, ComputeMemoryFlags.ReadOnly, (int)TextureTarget.Texture2D, 0, clDevice.m_iGLTextureId);//Cl.CreateBuffer<Color>(clDevice.m_Context, MemFlags.WriteOnly, iSize, out error);
-                //if (error != ErrorCode.Success) { throw new Exception("Cl.CreateBuffer: clOutput_Texture"); }
-            }/*);*/
+                clDevice.m_TextureBytes = new byte[iLength];
 
-            
-
-            //m_TextureBytes = new byte[iWidth * iHeight * 4];
-            //
-            //if (null != bitmap)
-            //{
-            //    bitmap.Dispose();
-            //    bitmap = null;
-            //}
-            //
-            //bitmap = new Bitmap(iWidth, iHeight, PixelFormat.Format32bppArgb);
+                writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
+            }
 
             m_mtxMutex.ReleaseMutex();
-        }
-
-        int GenerateGLTexture(int iWidth, int iHeight)
-        {
-            // We create a single float channel 512^2 texture
-            int texHandle;
-            texHandle = GL.GenTexture();
-
-            GL.ActiveTexture(TextureUnit.Texture1);
-            GL.BindTexture(TextureTarget.Texture2D, texHandle);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)All.Nearest);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)All.Nearest);
-            //GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R32f, 512, 512, 0, PixelFormat., PixelType.Float, IntPtr.Zero);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, iWidth, iHeight, 0, PixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero);
-
-            GL.BindTexture(TextureTarget.Texture2D, 0);
-            return texHandle;
         }
 
         public void Dispose()
@@ -1342,37 +1209,33 @@ namespace OpenCLRenderer
             OpenCLDevice clDevice = m_listOpenCLDevices[0];
             {
                 // texturak betoltese
-                if (null != clDevice.clInput_Materials) { /*Cl.ReleaseMemObject(clDevice.clInput_Materials);*/clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
+                if (null != clDevice.clInput_Materials) { clDevice.clInput_Materials.Dispose(); clDevice.clInput_Materials = null; }
                 
-                if (null != clDevice.clInput_TexturesData) { /*Cl.ReleaseMemObject(clDevice.clInput_TexturesData);*/clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
+                if (null != clDevice.clInput_TexturesData) { clDevice.clInput_TexturesData.Dispose(); clDevice.clInput_TexturesData = null; }
                 
                 // matrixok betoltese
-                if (null != clDevice.clInput_MatricesData) { /*Cl.ReleaseMemObject(clDevice.clInput_MatricesData);*/clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
+                if (null != clDevice.clInput_MatricesData) { clDevice.clInput_MatricesData.Dispose(); clDevice.clInput_MatricesData = null; }
                 
                 // Global level N
                 foreach (ComputeBuffer<BVHNode> clInput_RefitTree_LevelX in clDevice.listCLInput_RefitTree_LevelX)
                 {
-                    //Cl.ReleaseMemObject(clInput_RefitTree_LevelX);
                     clInput_RefitTree_LevelX.Dispose();
                 }
                 clDevice.listCLInput_RefitTree_LevelX.Clear();
                 
                 // global types
-                if (null != clDevice.clInput_AllBVHNodesType) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodesType);*/clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
+                if (null != clDevice.clInput_AllBVHNodesType) { clDevice.clInput_AllBVHNodesType.Dispose(); clDevice.clInput_AllBVHNodesType = null; }
 
                 // start global nodes
-                if (null != clDevice.clInput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInput_AllBVHNodes);*/clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
+                if (null != clDevice.clInput_AllBVHNodes) { clDevice.clInput_AllBVHNodes.Dispose(); clDevice.clInput_AllBVHNodes = null; }
                 
                 // calculating global types
-                if (null != clDevice.clInputOutput_AllBVHNodes) { /*Cl.ReleaseMemObject(clDevice.clInputOutput_AllBVHNodes);*/clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
+                if (null != clDevice.clInputOutput_AllBVHNodes) { clDevice.clInputOutput_AllBVHNodes.Dispose(); clDevice.clInputOutput_AllBVHNodes = null; }
 
-                //Cl.ReleaseKernel(clDevice.kernelVertexShader);
-                //Cl.ReleaseKernel(clDevice.KernelRefitTree_LevelX);
-                //Cl.ReleaseKernel(clDevice.KernelCameraRays);
-                //Cl.ReleaseKernel(clDevice.KernelRayShader);
-                //Cl.ReleaseCommandQueue(clDevice.cmdQueue);
-                //Cl.ReleaseProgram(clDevice.m_Program);
-                //Cl.ReleaseContext(clDevice.m_Context);
+                // rendertarget
+                if (null != clDevice.clOutput_TextureBuffer) { clDevice.clOutput_TextureBuffer.Dispose(); clDevice.clOutput_TextureBuffer = null; }
+                //if (0 != clDevice.m_iGLTextureId) { GL.DeleteTexture(clDevice.m_iGLTextureId); clDevice.m_iGLTextureId = 0; }
+
                 clDevice.kernelVertexShader.Dispose();
                 clDevice.KernelRefitTree_LevelX.Dispose();
                 clDevice.KernelCameraRays.Dispose();
@@ -1403,8 +1266,8 @@ namespace OpenCLRenderer
 
         int m_iWidth;
         int m_iHeight;
-        //byte[] m_TextureBytes = null;
         //Bitmap bitmap = null;
+        WriteableBitmap writeableBitmap = null;
 
         List<OpenCLDevice> m_listOpenCLDevices = new List<OpenCLDevice>();
     }
@@ -1420,8 +1283,6 @@ namespace OpenCLRenderer
         public ComputeKernel KernelCameraRays;
         public ComputeKernel KernelRayShader;
 
-        public string m_strName;
-        
         // textures
         public ComputeBuffer<Material> clInput_Materials = null;
         public ComputeBuffer<byte> clInput_TexturesData = null;
@@ -1436,8 +1297,10 @@ namespace OpenCLRenderer
         public List<ComputeBuffer<BVHNode> > listCLInput_RefitTree_LevelX = new List<ComputeBuffer<BVHNode> >();
         public ComputeBuffer<Ray> clInputOutput_Rays = null;
 
-        public int m_iGLTextureId = 0;
-        public ComputeImage2D clOutput_Texture = null;
+        //public int m_iGLTextureId = 0;
+        public ComputeBuffer<byte> clOutput_TextureBuffer = null;
+        public byte[] m_TextureBytes;
+        
         
     }
 }
