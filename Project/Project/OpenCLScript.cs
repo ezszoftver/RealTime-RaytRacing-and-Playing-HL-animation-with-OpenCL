@@ -666,7 +666,7 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vect
     inout_Rays[id] = ray;
 }
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);

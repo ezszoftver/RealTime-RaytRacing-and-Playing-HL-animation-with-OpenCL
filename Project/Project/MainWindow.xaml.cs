@@ -42,7 +42,7 @@ namespace Project
 
             Mutex mtxMutex = new Mutex();
             
-            Parallel.For(0, 1, index =>
+            Parallel.For(0, 100, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
@@ -54,7 +54,7 @@ namespace Project
             
                 // convert to triangle list
                 int iMatrixId = m_Scene.GenMatrix();
-                m_Scene.SetMatrix(iMatrixId, Matrix4.CreateTranslation(new Vector3(100,200,300)));
+                m_Scene.SetMatrix(iMatrixId, Matrix4.CreateTranslation(new Vector3(0, 0, 0)));
             
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (OBJLoader.Material material in objLoader.materials)
@@ -143,7 +143,7 @@ namespace Project
             
                 int iId;
                 //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateTranslation(new Vector3(100, 200, 300)));
+                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateTranslation(new Vector3(0, 0, 0)));
                 //m_Scene.SetObject(iId, staticObject);
             
                 iId = m_Scene.GenObject();
