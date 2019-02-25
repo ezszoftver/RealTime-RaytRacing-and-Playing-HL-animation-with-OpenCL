@@ -87,29 +87,25 @@ Matrix4x4 Mult_Matrix4x4Float(Matrix4x4 T, float scale)
 {
     Matrix4x4 ret;
 
-    ret.m11 = T.m11;
+    ret.m11 = T.m11 * scale;
     ret.m12 = T.m12;
     ret.m13 = T.m13;
     ret.m14 = T.m14;
 
     ret.m21 = T.m21;
-    ret.m22 = T.m22;
+    ret.m22 = T.m22 * scale;
     ret.m23 = T.m23;
     ret.m24 = T.m24;
 
     ret.m31 = T.m31;
     ret.m32 = T.m32;
-    ret.m33 = T.m33;
+    ret.m33 = T.m33 * scale;
     ret.m34 = T.m34;
 
     ret.m41 = T.m41;
     ret.m42 = T.m42;
     ret.m43 = T.m43;
     ret.m44 = T.m44;
-
-    ret.m11 *= scale;
-    ret.m22 *= scale;
-    ret.m33 *= scale;
 
     return ret;
 }

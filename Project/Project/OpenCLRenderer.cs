@@ -213,25 +213,28 @@ namespace OpenCLRenderer
             m_mtxMutex.WaitOne();
             Matrix newMatrix = new Matrix();
 
-            newMatrix.m11 = mMatrix.M11;
-            newMatrix.m12 = mMatrix.M12;
-            newMatrix.m13 = mMatrix.M13;
-            newMatrix.m14 = mMatrix.M14;
+            Matrix4 transposedMatrix = new Matrix4(mMatrix.Row0, mMatrix.Row1, mMatrix.Row2, mMatrix.Row3);
+            transposedMatrix.Transpose();
 
-            newMatrix.m21 = mMatrix.M21;
-            newMatrix.m22 = mMatrix.M22;
-            newMatrix.m23 = mMatrix.M23;
-            newMatrix.m24 = mMatrix.M24;
+            newMatrix.m11 = transposedMatrix.M11;
+            newMatrix.m12 = transposedMatrix.M12;
+            newMatrix.m13 = transposedMatrix.M13;
+            newMatrix.m14 = transposedMatrix.M14;
 
-            newMatrix.m31 = mMatrix.M31;
-            newMatrix.m32 = mMatrix.M32;
-            newMatrix.m33 = mMatrix.M33;
-            newMatrix.m34 = mMatrix.M34;
+            newMatrix.m21 = transposedMatrix.M21;
+            newMatrix.m22 = transposedMatrix.M22;
+            newMatrix.m23 = transposedMatrix.M23;
+            newMatrix.m24 = transposedMatrix.M24;
 
-            newMatrix.m41 = mMatrix.M41;
-            newMatrix.m42 = mMatrix.M42;
-            newMatrix.m43 = mMatrix.M43;
-            newMatrix.m44 = mMatrix.M44;
+            newMatrix.m31 = transposedMatrix.M31;
+            newMatrix.m32 = transposedMatrix.M32;
+            newMatrix.m33 = transposedMatrix.M33;
+            newMatrix.m34 = transposedMatrix.M34;
+
+            newMatrix.m41 = transposedMatrix.M41;
+            newMatrix.m42 = transposedMatrix.M42;
+            newMatrix.m43 = transposedMatrix.M43;
+            newMatrix.m44 = transposedMatrix.M44;
 
             m_listMatrices[iId] = newMatrix;
             m_mtxMutex.ReleaseMutex();
@@ -465,6 +468,9 @@ namespace OpenCLRenderer
 
         public BVHObject CreateStaticObject(List<Triangle> triangles, Matrix4 matTransform)
         {
+            Matrix4 transposedMatrix = new Matrix4(matTransform.Row0, matTransform.Row1, matTransform.Row2, matTransform.Row3);
+            transposedMatrix.Transpose();
+
             List<Triangle> newTriangles = new List<Triangle>();
 
             foreach (Triangle oldTri in triangles)
@@ -472,11 +478,11 @@ namespace OpenCLRenderer
                 Triangle newTri = new Triangle();
 
                 Vertex vertexA = new Vertex();
-                Vector3 AV = new Vector3(matTransform * new Vector4(oldTri.m_A.m_Vx, oldTri.m_A.m_Vy, oldTri.m_A.m_Vz, 1.0f));
+                Vector3 AV = new Vector3(transposedMatrix * new Vector4(oldTri.m_A.m_Vx, oldTri.m_A.m_Vy, oldTri.m_A.m_Vz, 1.0f));
                 vertexA.m_Vx = AV.X;
                 vertexA.m_Vy = AV.Y;
                 vertexA.m_Vz = AV.Z;
-                Vector3 AN = new Vector3(matTransform * new Vector4(oldTri.m_A.m_Nx, oldTri.m_A.m_Ny, oldTri.m_A.m_Nz, 0.0f));
+                Vector3 AN = new Vector3(transposedMatrix * new Vector4(oldTri.m_A.m_Nx, oldTri.m_A.m_Ny, oldTri.m_A.m_Nz, 0.0f));
                 vertexA.m_Nx = AN.X;
                 vertexA.m_Ny = AN.Y;
                 vertexA.m_Nz = AN.Z;
@@ -491,11 +497,11 @@ namespace OpenCLRenderer
                 vertexA.m_fWeight3 = 0.0f;
 
                 Vertex vertexB = new Vertex();
-                Vector3 BV = new Vector3(matTransform * new Vector4(oldTri.m_B.m_Vx, oldTri.m_B.m_Vy, oldTri.m_B.m_Vz, 1.0f));
+                Vector3 BV = new Vector3(transposedMatrix * new Vector4(oldTri.m_B.m_Vx, oldTri.m_B.m_Vy, oldTri.m_B.m_Vz, 1.0f));
                 vertexB.m_Vx = BV.X;
                 vertexB.m_Vy = BV.Y;
                 vertexB.m_Vz = BV.Z;
-                Vector3 BN = new Vector3(matTransform * new Vector4(oldTri.m_B.m_Nx, oldTri.m_B.m_Ny, oldTri.m_B.m_Nz, 0.0f));
+                Vector3 BN = new Vector3(transposedMatrix * new Vector4(oldTri.m_B.m_Nx, oldTri.m_B.m_Ny, oldTri.m_B.m_Nz, 0.0f));
                 vertexB.m_Nx = BN.X;
                 vertexB.m_Ny = BN.Y;
                 vertexB.m_Nz = BN.Z;
@@ -510,11 +516,11 @@ namespace OpenCLRenderer
                 vertexB.m_fWeight3 = 0.0f;
 
                 Vertex vertexC = new Vertex();
-                Vector3 CV = new Vector3(matTransform * new Vector4(oldTri.m_C.m_Vx, oldTri.m_C.m_Vy, oldTri.m_C.m_Vz, 1.0f));
+                Vector3 CV = new Vector3(transposedMatrix * new Vector4(oldTri.m_C.m_Vx, oldTri.m_C.m_Vy, oldTri.m_C.m_Vz, 1.0f));
                 vertexC.m_Vx = CV.X;
                 vertexC.m_Vy = CV.Y;
                 vertexC.m_Vz = CV.Z;
-                Vector3 CN = new Vector3(matTransform * new Vector4(oldTri.m_C.m_Nx, oldTri.m_C.m_Ny, oldTri.m_C.m_Nz, 0.0f));
+                Vector3 CN = new Vector3(transposedMatrix * new Vector4(oldTri.m_C.m_Nx, oldTri.m_C.m_Ny, oldTri.m_C.m_Nz, 0.0f));
                 vertexC.m_Nx = CN.X;
                 vertexC.m_Ny = CN.Y;
                 vertexC.m_Nz = CN.Z;

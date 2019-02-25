@@ -143,7 +143,7 @@ namespace Project
             
                 int iId;
                 //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.Identity);
+                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateTranslation(new Vector3(100, 200, 300)));
                 //m_Scene.SetObject(iId, staticObject);
             
                 iId = m_Scene.GenObject();
