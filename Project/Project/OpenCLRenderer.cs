@@ -1072,120 +1072,120 @@ namespace OpenCLRenderer
 
 
 
-            // get rays
-            ComputeEventList eventList2 = new ComputeEventList();
-            Ray[] in_Rays = new Ray[clInputOutput_Rays.Count];
-            cmdQueue.ReadFromBuffer(clInputOutput_Rays, ref in_Rays, true, eventList2);
-            cmdQueue.Finish();
-            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            eventList2.Clear();
-
-            // get begin objects
-            int[] in_BeginObjects = new int[clInput_BeginObjects.Count];
-            cmdQueue.ReadFromBuffer(clInput_BeginObjects, ref in_BeginObjects, true, eventList2);
-            cmdQueue.Finish();
-            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            eventList2.Clear();
-
-            // get all bvh nodes
-            BVHNode[] in_BVHNodes = new BVHNode[clInputOutput_AllBVHNodes.Count];
-            cmdQueue.ReadFromBuffer(clInputOutput_AllBVHNodes, ref in_BVHNodes, true, eventList2);
-            cmdQueue.Finish();
-            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            eventList2.Clear();
-
-            ;
-
-            for (int rayid = 0; rayid < in_Rays.Count(); rayid++)
-            {
-                Ray ray = in_Rays[rayid];
-                // script
-                BVHNode[] stack = new BVHNode[50];
-                int top = -1;
-                for (int i = 0; i < m_iNumBeginObjects; i++)
-                {
-                    int rootId = in_BeginObjects[i];
-
-                    top++;
-                    stack[top] = in_BVHNodes[rootId];
-
-                    while (top != -1)
-                    {
-                        if (stack[top].m_iLeft == -1 && stack[top].m_iRight == -1) // ha level
-                        {
-                            Hit hit = IntersectRayTri(ray, tri);
-                            if (1 == hit.isCollision) // ha van metszes a haromsoggel
-                            {
-                                if (hit.length < ray.length && hit.length < min_depth[id1])
-                                {
-                                    out_Texture[id + 0] = 255;
-                                    out_Texture[id + 1] = 255;
-                                    out_Texture[id + 2] = 255;
-                                    out_Texture[id + 3] = 255;
-                                    min_depth[id1] = hit.length;
-                                    top = -1;
-                                }
-                            }
-                            else // ha nincs metszes a haromszoggel, akkor visszalepes eggyel
-                            {
-                                top--;
-                            }
-                        }
-                        else if (1 == IntersectRayBox(ray, box)) // ha csomopont, ha elmetszi
-                        {
-                            /* beletesz gyerek(ek)*/
-                            if (stack[top].m_iLeft != -1 && stack[top].m_iRight != -1)
-                            {
-                                BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
-                                BBox boxLeft = stack[top].m_iLeft;
-                                float distLeft = DistancePointBox(ray.pos, boxLeft);
-
-                                BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
-                                BBox boxRight = stack[top].m_iRight;
-                                float distRight = DistancePointBox(ray.pos, boxRight);
-
-                                if (distLeft > distRight)
-                                {
-                                    // eloszor a tavolabbi
-                                    top++;
-                                    stack[top] = nodeLeft;
-
-                                    // majd a kozelebbi
-                                    top++;
-                                    stack[top] = nodeRight;
-                                }
-                                else
-                                {
-                                    // eloszor a tavolabbi
-                                    top++;
-                                    stack[top] = nodeRight;
-
-                                    // majd a kozelebbi
-                                    top++;
-                                    stack[top] = nodeLeft;
-                                }
-
-                            }
-                            else if (stack[top].m_iLeft != -1)
-                            {
-                                /*ha csak left van*/
-                                BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
-                                top++;
-                                stack[top] = nodeLeft;
-                            }
-                            else if (stack[top].m_iRight != -1)
-                            {
-                                /*ha csak right van*/
-                                BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
-                                top++;
-                                stack[top] = nodeRight;
-                            }
-                        }
-                        else { top--; /*ha nincs utkozes*/ } // ha a csomopontot nem metszi el, akkor egyet visszalepes
-                    }
-
-                }
-            }
+//            // get rays
+//            ComputeEventList eventList2 = new ComputeEventList();
+//            Ray[] in_Rays = new Ray[clInputOutput_Rays.Count];
+//            cmdQueue.ReadFromBuffer(clInputOutput_Rays, ref in_Rays, true, eventList2);
+//            cmdQueue.Finish();
+//            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
+//            eventList2.Clear();
+//
+//            // get begin objects
+//            int[] in_BeginObjects = new int[clInput_BeginObjects.Count];
+//            cmdQueue.ReadFromBuffer(clInput_BeginObjects, ref in_BeginObjects, true, eventList2);
+//            cmdQueue.Finish();
+//            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
+//            eventList2.Clear();
+//
+//            // get all bvh nodes
+//            BVHNode[] in_BVHNodes = new BVHNode[clInputOutput_AllBVHNodes.Count];
+//            cmdQueue.ReadFromBuffer(clInputOutput_AllBVHNodes, ref in_BVHNodes, true, eventList2);
+//            cmdQueue.Finish();
+//            foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
+//            eventList2.Clear();
+//
+//            ;
+//
+//            for (int rayid = 0; rayid < in_Rays.Count(); rayid++)
+//            {
+//                Ray ray = in_Rays[rayid];
+//                // script
+//                BVHNode[] stack = new BVHNode[50];
+//                int top = -1;
+//                for (int i = 0; i < m_iNumBeginObjects; i++)
+//                {
+//                    int rootId = in_BeginObjects[i];
+//
+//                    top++;
+//                    stack[top] = in_BVHNodes[rootId];
+//
+//                    while (top != -1)
+//                    {
+//                        if (stack[top].m_iLeft == -1 && stack[top].m_iRight == -1) // ha level
+//                        {
+//                            Hit hit = IntersectRayTri(ray, tri);
+//                            if (1 == hit.isCollision) // ha van metszes a haromsoggel
+//                            {
+//                                if (hit.length < ray.length && hit.length < min_depth[id1])
+//                                {
+//                                    out_Texture[id + 0] = 255;
+//                                    out_Texture[id + 1] = 255;
+//                                    out_Texture[id + 2] = 255;
+//                                    out_Texture[id + 3] = 255;
+//                                    min_depth[id1] = hit.length;
+//                                    top = -1;
+//                                }
+//                            }
+//                            else // ha nincs metszes a haromszoggel, akkor visszalepes eggyel
+//                            {
+//                                top--;
+//                            }
+//                        }
+//                        else if (1 == IntersectRayBox(ray, box)) // ha csomopont, ha elmetszi
+//                        {
+//                            /* beletesz gyerek(ek)*/
+//                            if (stack[top].m_iLeft != -1 && stack[top].m_iRight != -1)
+//                            {
+//                                BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
+//                                BBox boxLeft = stack[top].m_iLeft;
+//                                float distLeft = DistancePointBox(ray.pos, boxLeft);
+//
+//                                BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
+//                                BBox boxRight = stack[top].m_iRight;
+//                                float distRight = DistancePointBox(ray.pos, boxRight);
+//
+//                                if (distLeft > distRight)
+//                                {
+//                                    // eloszor a tavolabbi
+//                                    top++;
+//                                    stack[top] = nodeLeft;
+//
+//                                    // majd a kozelebbi
+//                                    top++;
+//                                    stack[top] = nodeRight;
+//                                }
+//                                else
+//                                {
+//                                    // eloszor a tavolabbi
+//                                    top++;
+//                                    stack[top] = nodeRight;
+//
+//                                    // majd a kozelebbi
+//                                    top++;
+//                                    stack[top] = nodeLeft;
+//                                }
+//
+//                            }
+//                            else if (stack[top].m_iLeft != -1)
+//                            {
+//                                /*ha csak left van*/
+//                                BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
+//                                top++;
+//                                stack[top] = nodeLeft;
+//                            }
+//                            else if (stack[top].m_iRight != -1)
+//                            {
+//                                /*ha csak right van*/
+//                                BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
+//                                top++;
+//                                stack[top] = nodeRight;
+//                            }
+//                        }
+//                        else { top--; /*ha nincs utkozes*/ } // ha a csomopontot nem metszi el, akkor egyet visszalepes
+//                    }
+//
+//                }
+//            }
 
 
 
