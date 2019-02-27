@@ -42,7 +42,7 @@ namespace Project
 
             Mutex mtxMutex = new Mutex();
             
-            Parallel.For(0, 100, index =>
+            Parallel.For(0, 1, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
