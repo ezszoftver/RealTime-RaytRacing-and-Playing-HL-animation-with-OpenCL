@@ -619,16 +619,16 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode = inBVHNode;
 
             // level 2 - X
-            outBVHNode.bbox.minx = 0;
-            outBVHNode.bbox.miny = 0;
-            outBVHNode.bbox.minz = 0;
-            outBVHNode.bbox.maxx = 0;
-            outBVHNode.bbox.maxy = 0;
-            outBVHNode.bbox.maxz = 0;
-
-            outBVHNode.bbox.centerx = 0;
-            outBVHNode.bbox.centery = 0;
-            outBVHNode.bbox.centerz = 0;
+            //outBVHNode.bbox.minx = 0;
+            //outBVHNode.bbox.miny = 0;
+            //outBVHNode.bbox.minz = 0;
+            //outBVHNode.bbox.maxx = 0;
+            //outBVHNode.bbox.maxy = 0;
+            //outBVHNode.bbox.maxz = 0;
+            //
+            //outBVHNode.bbox.centerx = 0;
+            //outBVHNode.bbox.centery = 0;
+            //outBVHNode.bbox.centerz = 0;
         }
     }
 
@@ -676,7 +676,7 @@ float3 scale(float3 point, float scale)
 	return ret;
 }
 
-__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float stepAngle, float in_Angle, float in_ZFar, int in_Width, int in_Height, int origox, int origoy, __global Ray *inout_Rays, __global float *inout_DepthTexture)
+__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float in_Angle, float in_ZFar, int in_Width, int in_Height, __global Ray *inout_Rays, __global float *inout_DepthTexture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -684,24 +684,19 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vect
     int id = (in_Width * pixely) + pixelx;
 
     float3 pos = ToFloat3(in_Pos.x, in_Pos.y, in_Pos.z);
-    float3 at = ToFloat3(in_At.x, in_At.y, in_At.z);
     float3 up = ToFloat3(in_Up.x, in_Up.y, in_Up.z);
     float3 dir = ToFloat3(in_Dir.x, in_Dir.y, in_Dir.z);
     float3 right = ToFloat3(in_Right.x, in_Right.y, in_Right.z);
 
-    float stepPerPixel = 2.0f / (float)in_Height;
-		
-	//float3 dir = normalize(cam->at - cam->pos);
-	//float3 up = cam->up;
-	//float3 right = cross(dir, up);
-	
-	int movePixelX = pixelx - (in_Width / 2);
-	int movePixelY = pixely - (in_Height / 2);
-	
-	float3 moveRight = scale(right, stepPerPixel * movePixelX);
-	float3 moveUp = scale(up, stepPerPixel * movePixelY);
+    float stepPerPixel = tan(in_Angle) / ((float)in_Height / 2.0f);
 
-	float3 dir2 = normalize(dir + moveRight + moveUp);
+    int movePixelX = pixelx - (in_Width / 2);
+	int movePixelY = pixely - (in_Height / 2);
+
+    float3 moveUp = scale(up, movePixelY * stepPerPixel);
+    float3 moveRight = scale(right, movePixelX * stepPerPixel);
+
+    float3 dir2 = normalize(dir + moveUp + moveRight);
 
     Ray ray;
     ray.posx = pos.x;
@@ -710,10 +705,9 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vect
     ray.dirx = dir2.x;
     ray.diry = dir2.y;
     ray.dirz = dir2.z;
-
     ray.length = in_ZFar;
+
     inout_DepthTexture[id] = in_ZFar;
-    
     inout_Rays[id] = ray;
 }
 
@@ -848,7 +842,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     {
         int rootId = in_BeginObjects[i];
      
-        int stack[1000];
+        int stack[100];
         int top = -1;
 
         top++;

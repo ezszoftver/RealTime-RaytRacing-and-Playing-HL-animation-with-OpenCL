@@ -17,23 +17,6 @@ using System.Windows.Media;
 
 namespace OpenCLRenderer
 {
-    //struct Hit2
-    //{
-    //    public Vector3 pos;
-    //    public Vector3 normal;
-    //    public float length;
-    //    public int materialId;
-    //    public Vector2 uv;
-    //    public int isCollision;
-    //}
-    //
-    //struct Ray2
-    //{
-    //    public Vector3 pos;
-    //    public Vector3 dir;
-    //    public float length;
-    //}
-
     struct Float3
     {
         public float m_X;
@@ -159,7 +142,18 @@ namespace OpenCLRenderer
     class Scene : IDisposable
     {
         
-        public Scene() { }
+        public Scene()
+        {
+            // ez azert, hogy ne adjon warning-ot a fordito, mert 1x sem hasznaljuk a Ray strukturat
+            Ray ray = new Ray();
+            ray.posx = 0;
+            ray.posy = 0;
+            ray.posz = 0;
+            ray.dirx = 0;
+            ray.diry = 0;
+            ray.dirz = 0;
+            ray.length = 0;
+        }
 
         public void CreateDevice()
         {
@@ -1018,12 +1012,6 @@ namespace OpenCLRenderer
             inPos.m_Z = pos.Z;
 
             // at
-            Float3 inAt;
-            inAt.m_X = at.X;
-            inAt.m_Y = at.Y;
-            inAt.m_Z = at.Z;
-
-            // at
             up = up.Normalized();
             Float3 inUp;
             inUp.m_X = up.X;
@@ -1044,23 +1032,16 @@ namespace OpenCLRenderer
             inRight.m_Y = right.Y;
             inRight.m_Z = right.Z;
 
-            // step
-            float step = angle / ((float)m_iHeight / 2.0f);
-
             KernelCameraRays.SetValueArgument<Float3>(0, inPos);
-            KernelCameraRays.SetValueArgument<Float3>(1, inAt);
-            KernelCameraRays.SetValueArgument<Float3>(2, inUp);
-            KernelCameraRays.SetValueArgument<Float3>(3, inDir);
-            KernelCameraRays.SetValueArgument<Float3>(4, inRight);
-            KernelCameraRays.SetValueArgument<float>(5, step);
-            KernelCameraRays.SetValueArgument<float>(6, angle);
-            KernelCameraRays.SetValueArgument<float>(7, zfar);
-            KernelCameraRays.SetValueArgument<int>(8, m_iWidth);
-            KernelCameraRays.SetValueArgument<int>(9, m_iHeight);
-            KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
-            KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
-            KernelCameraRays.SetMemoryArgument(12, clInputOutput_Rays);
-            KernelCameraRays.SetMemoryArgument(13, clInputOutput_DepthTextureBuffer);
+            KernelCameraRays.SetValueArgument<Float3>(1, inUp);
+            KernelCameraRays.SetValueArgument<Float3>(2, inDir);
+            KernelCameraRays.SetValueArgument<Float3>(3, inRight);
+            KernelCameraRays.SetValueArgument<float>(4, angle);
+            KernelCameraRays.SetValueArgument<float>(5, zfar);
+            KernelCameraRays.SetValueArgument<int>(6, m_iWidth);
+            KernelCameraRays.SetValueArgument<int>(7, m_iHeight);
+            KernelCameraRays.SetMemoryArgument(8, clInputOutput_Rays);
+            KernelCameraRays.SetMemoryArgument(9, clInputOutput_DepthTextureBuffer);
 
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
