@@ -66,6 +66,9 @@ namespace OpenCLRenderer
         public Vertex m_B;
         public Vertex m_C;
         public int m_iMaterialId;
+        public float m_fNormalX;
+        public float m_fNormalY;
+        public float m_fNormalZ;
     }
 
     struct BBox
@@ -76,6 +79,10 @@ namespace OpenCLRenderer
         public float maxx;
         public float maxy;
         public float maxz;
+
+        public float centerx;
+        public float centery;
+        public float centerz;
     }
 
     struct BVHNode
@@ -409,6 +416,10 @@ namespace OpenCLRenderer
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
 
+            bbox.centerx = (fMinX + fMaxX) / 2.0f;
+            bbox.centery = (fMinY + fMaxY) / 2.0f;
+            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
+
             return bbox;
         }
 
@@ -459,6 +470,10 @@ namespace OpenCLRenderer
             bbox.maxx = fMaxX;
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
+
+            bbox.centerx = (fMinX + fMaxX) / 2.0f;
+            bbox.centery = (fMinY + fMaxY) / 2.0f;
+            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
 
             return bbox;
         }
@@ -555,6 +570,12 @@ namespace OpenCLRenderer
                 newTri.m_B = vertexB;
                 newTri.m_C = vertexC;
                 newTri.m_iMaterialId = oldTri.m_iMaterialId;
+
+                // normal
+                Vector3 normal = Vector3.Cross(BV - AV, CV - AV).Normalized();
+                newTri.m_fNormalX = normal.X;
+                newTri.m_fNormalY = normal.Y;
+                newTri.m_fNormalZ = normal.Z;
 
                 newTriangles.Add(newTri);
             }
@@ -1039,7 +1060,8 @@ namespace OpenCLRenderer
             KernelCameraRays.SetValueArgument<int>(10, m_iWidth / 2);
             KernelCameraRays.SetValueArgument<int>(11, m_iHeight / 2);
             KernelCameraRays.SetMemoryArgument(12, clInputOutput_Rays);
-            
+            KernelCameraRays.SetMemoryArgument(13, clInputOutput_DepthTextureBuffer);
+
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
             cmdQueue.Finish();
@@ -1057,13 +1079,14 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
             KernelRayShader.SetMemoryArgument(2, clInput_BeginObjects);
             KernelRayShader.SetValueArgument<int>(3, m_iNumBeginObjects);
-            KernelRayShader.SetValueArgument<int>(4, m_iWidth);
-            KernelRayShader.SetValueArgument<int>(5, m_iHeight);
-            KernelRayShader.SetValueArgument<byte>(6, iRed);
-            KernelRayShader.SetValueArgument<byte>(7, iGreen);
-            KernelRayShader.SetValueArgument<byte>(8, iBlue);
-            KernelRayShader.SetValueArgument<byte>(9, iAlpha);
-            KernelRayShader.SetMemoryArgument(10, clOutput_TextureBuffer);
+            KernelRayShader.SetMemoryArgument(4, clInputOutput_DepthTextureBuffer);
+            KernelRayShader.SetValueArgument<int>(5, m_iWidth);
+            KernelRayShader.SetValueArgument<int>(6, m_iHeight);
+            KernelRayShader.SetValueArgument<byte>(7, iRed);
+            KernelRayShader.SetValueArgument<byte>(8, iGreen);
+            KernelRayShader.SetValueArgument<byte>(9, iBlue);
+            KernelRayShader.SetValueArgument<byte>(10, iAlpha);
+            KernelRayShader.SetMemoryArgument(11, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
@@ -1084,156 +1107,8 @@ namespace OpenCLRenderer
             writeableBitmap.Unlock();
 
             m_mtxMutex.ReleaseMutex();
-
-
-
-
-
-            //// get rays
-            //ComputeEventList eventList2 = new ComputeEventList();
-            //Ray[] in_Rays = new Ray[clInputOutput_Rays.Count];
-            //cmdQueue.ReadFromBuffer(clInputOutput_Rays, ref in_Rays, true, eventList2);
-            //cmdQueue.Finish();
-            //foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            //eventList2.Clear();
-            //
-            //// get begin objects
-            //int[] in_BeginObjects = new int[clInput_BeginObjects.Count];
-            //cmdQueue.ReadFromBuffer(clInput_BeginObjects, ref in_BeginObjects, true, eventList2);
-            //cmdQueue.Finish();
-            //foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            //eventList2.Clear();
-            //
-            //// get all bvh nodes
-            //BVHNode[] in_BVHNodes = new BVHNode[clInputOutput_AllBVHNodes.Count];
-            //cmdQueue.ReadFromBuffer(clInputOutput_AllBVHNodes, ref in_BVHNodes, true, eventList2);
-            //cmdQueue.Finish();
-            //foreach (ComputeEventBase eventBase in eventList2) { eventBase.Dispose(); }
-            //eventList2.Clear();
-            //
-            //// node-ba kell majd rakni. a vertex shader kinullazza
-            //int[] visited = new int[in_BVHNodes.Count()];
-            //
-            //// clear
-            //float[] min_depth = new float[1];
-            //min_depth[0] = 100.0f;
-            //
-            //for (int rayid = 0; rayid < in_Rays.Count(); rayid++)
-            //{
-            //    Ray ray = in_Rays[rayid];
-            //    // script
-            //    BVHNode[] stack = new BVHNode[50];
-            //    int top = -1;
-            //    for (int i = 0; i < m_iNumBeginObjects; i++)
-            //    {
-            //        int rootId = in_BeginObjects[i];
-            //
-            //        top++;
-            //        stack[top] = in_BVHNodes[rootId];
-            //
-            //        while (top != -1)
-            //        {
-            //            if (stack[top].m_iLeft == -1 && stack[top].m_iRight == -1) // ha level
-            //            {
-            //                Hit2 hit = IntersectRayTri(ray, stack[top].m_Triangle);
-            //                if (1 == hit.isCollision) // ha van metszes a haromsoggel
-            //                {
-            //                    int id1 = 0;
-            //                    if (hit.length < ray.length && hit.length < min_depth[id1])
-            //                    {
-            //                        //out_Texture[id + 0] = 255;
-            //                        //out_Texture[id + 1] = 255;
-            //                        //out_Texture[id + 2] = 255;
-            //                        //out_Texture[id + 3] = 255;
-            //                        min_depth[id1] = hit.length;
-            //                        top = -1;
-            //                    }
-            //                }
-            //                else // ha nincs metszes a haromszoggel, akkor visszalepes eggyel
-            //                {
-            //                    top--;
-            //                }
-            //            }
-            //            else if (1 == IntersectRayBox(ray, stack[top].m_BBox) && 0 == visited[stack[top].m_iId]) // ha csomopont, ha elmetszi
-            //            {
-            //                visited[stack[top].m_iId] = 1;
-            //                /* beletesz gyerek(ek)*/
-            //                if (stack[top].m_iLeft != -1 && stack[top].m_iRight != -1)
-            //                {
-            //                    BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
-            //                    BBox boxLeft = nodeLeft.m_BBox;
-            //                    float distLeft = DistancePointBox(new Vector3(ray.posx, ray.posy, ray.posz), boxLeft);
-            //
-            //                    BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
-            //                    BBox boxRight = nodeRight.m_BBox;
-            //                    float distRight = DistancePointBox(new Vector3(ray.posx, ray.posy, ray.posz), boxRight);
-            //
-            //                    if (distLeft > distRight)
-            //                    {
-            //                        // eloszor a tavolabbi
-            //                        top++;
-            //                        stack[top] = nodeLeft;
-            //
-            //                        // majd a kozelebbi
-            //                        top++;
-            //                        stack[top] = nodeRight;
-            //                    }
-            //                    else
-            //                    {
-            //                        // eloszor a tavolabbi
-            //                        top++;
-            //                        stack[top] = nodeRight;
-            //
-            //                        // majd a kozelebbi
-            //                        top++;
-            //                        stack[top] = nodeLeft;
-            //                    }
-            //
-            //                }
-            //                else if (stack[top].m_iLeft != -1)
-            //                {
-            //                    /*ha csak left van*/
-            //                    BVHNode nodeLeft = in_BVHNodes[stack[top].m_iLeft];
-            //                    top++;
-            //                    stack[top] = nodeLeft;
-            //                }
-            //                else if (stack[top].m_iRight != -1)
-            //                {
-            //                    /*ha csak right van*/
-            //                    BVHNode nodeRight = in_BVHNodes[stack[top].m_iRight];
-            //                    top++;
-            //                    stack[top] = nodeRight;
-            //                }
-            //            }
-            //            else { top--; /*ha nincs utkozes*/ } // ha a csomopontot nem metszi el, akkor egyet visszalepes
-            //        }
-            //
-            //    }
-            //}
-
         }
-//
-//        Hit2 IntersectRayTri(Ray ray, Triangle tri)
-//        {
-//            Hit2 hit = new Hit2();
-//
-//            hit.pos = new Vector3(0, 0, 0);
-//            hit.length = 1.0f;
-//            hit.isCollision = 0;
-//
-//            return hit;
-//        }
-//
-//        int IntersectRayBox(Ray ray, BBox box)
-//        {
-//            return 1;
-//        }
-//
-//        float DistancePointBox(Vector3 pos, BBox bbox)
-//        {
-//            return 1.0f;
-//        }
-
+        
         public WriteableBitmap GetWriteableBitmap()
         {
             return writeableBitmap;
@@ -1281,6 +1156,10 @@ namespace OpenCLRenderer
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
 
+            bbox.centerx = (fMinX + fMaxX) / 2.0f;
+            bbox.centery = (fMinY + fMaxY) / 2.0f;
+            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
+
             return bbox;
         }
 
@@ -1302,6 +1181,11 @@ namespace OpenCLRenderer
             clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.WriteOnly, iWidth * iHeight * 4);
 
             writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
+
+            // depth
+            //clInputOutput_DepthTextureBuffer
+            if (null != clInputOutput_DepthTextureBuffer) { clInputOutput_DepthTextureBuffer.Dispose(); clInputOutput_DepthTextureBuffer = null; }
+            clInputOutput_DepthTextureBuffer = new ComputeBuffer<float>(m_Context, ComputeMemoryFlags.ReadWrite, iWidth * iHeight);
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1343,6 +1227,8 @@ namespace OpenCLRenderer
 
             // rendertarget
             if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
+            // depth
+            if (null != clInputOutput_DepthTextureBuffer) { clInputOutput_DepthTextureBuffer.Dispose(); clInputOutput_DepthTextureBuffer = null; }
 
             kernelVertexShader.Dispose();
             KernelRefitTree_LevelX.Dispose();
@@ -1401,5 +1287,7 @@ namespace OpenCLRenderer
         // rendertarget
         ComputeBuffer<byte> clOutput_TextureBuffer = null;
         WriteableBitmap writeableBitmap = null;
+        // depth
+        ComputeBuffer<float> clInputOutput_DepthTextureBuffer = null;
     }
 }

@@ -324,6 +324,17 @@ Ray;
 
 typedef struct
 {
+    float3 pos;
+    float3 normal;
+    float t;
+    int materialId;
+    float2 uv;
+    int isCollision;
+}
+Hit;
+
+typedef struct
+{
     float x;
     float y;
     float z;
@@ -356,6 +367,9 @@ typedef struct
     Vertex b;
     Vertex c;
     int materialId;
+    float normalx;
+    float normaly;
+    float normalz;
 }
 Triangle;
 
@@ -367,6 +381,9 @@ typedef struct
     float maxx;
     float maxy;
     float maxz;
+    float centerx;
+    float centery;
+    float centerz;
 }
 BBox;
 
@@ -437,6 +454,10 @@ BBox GenBBox_Tri(Triangle tri)
     bbox.maxx = fMaxX;
     bbox.maxy = fMaxY;
     bbox.maxz = fMaxZ;
+    
+    bbox.centerx = (fMinX + fMaxX) / 2.0f;
+    bbox.centery = (fMinY + fMaxY) / 2.0f;
+    bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
 
     return bbox;
 }
@@ -488,6 +509,10 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     bbox.maxx = fMaxX;
     bbox.maxy = fMaxY;
     bbox.maxz = fMaxZ;
+
+    bbox.centerx = (fMinX + fMaxX) / 2.0f;
+    bbox.centerx = (fMinY + fMaxY) / 2.0f;
+    bbox.centerx = (fMinZ + fMaxZ) / 2.0f;
 
     return bbox;
 }
@@ -577,6 +602,15 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode.triangle.b = VertexShader(inBVHNode.triangle.b, in_Matrices);
             outBVHNode.triangle.c = VertexShader(inBVHNode.triangle.c, in_Matrices);
 
+            // normal
+            float3 va = ToFloat3(outBVHNode.triangle.a.vx, outBVHNode.triangle.a.vy, outBVHNode.triangle.a.vz);
+            float3 vb = ToFloat3(outBVHNode.triangle.b.vx, outBVHNode.triangle.b.vy, outBVHNode.triangle.b.vz);
+            float3 vc = ToFloat3(outBVHNode.triangle.c.vx, outBVHNode.triangle.c.vy, outBVHNode.triangle.c.vz);
+            float3 normal = normalize(cross(vb - va, vc - va));
+            outBVHNode.triangle.normalx = normal.x;
+            outBVHNode.triangle.normaly = normal.y;
+            outBVHNode.triangle.normalz = normal.z;
+
             // level 1
             outBVHNode.bbox = GenBBox_Tri(outBVHNode.triangle);
         }
@@ -591,6 +625,10 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode.bbox.maxx = 0;
             outBVHNode.bbox.maxy = 0;
             outBVHNode.bbox.maxz = 0;
+
+            outBVHNode.bbox.centerx = 0;
+            outBVHNode.bbox.centery = 0;
+            outBVHNode.bbox.centerz = 0;
         }
     }
 
@@ -629,11 +667,20 @@ float3 RotateAxisAngle(float3 axis, float3 v, float theta)
     return rotated;
 }
 
-__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float stepAngle, float in_Angle, float in_ZFar, int in_Width, int in_Height, int origox, int origoy, __global Ray *inout_Rays)
+float3 scale(float3 point, float scale)
+{
+	float3 ret;
+	ret.x = point.x * scale;
+	ret.y = point.y * scale;
+	ret.z = point.z * scale;
+	return ret;
+}
+
+__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float stepAngle, float in_Angle, float in_ZFar, int in_Width, int in_Height, int origox, int origoy, __global Ray *inout_Rays, __global float *inout_DepthTexture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
-
+    
     int id = (in_Width * pixely) + pixelx;
 
     float3 pos = ToFloat3(in_Pos.x, in_Pos.y, in_Pos.z);
@@ -642,41 +689,226 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_At, Vector3 in_Up, Vect
     float3 dir = ToFloat3(in_Dir.x, in_Dir.y, in_Dir.z);
     float3 right = ToFloat3(in_Right.x, in_Right.y, in_Right.z);
 
+    float stepPerPixel = 2.0f / (float)in_Height;
+		
+	//float3 dir = normalize(cam->at - cam->pos);
+	//float3 up = cam->up;
+	//float3 right = cross(dir, up);
+	
+	int movePixelX = pixelx - (in_Width / 2);
+	int movePixelY = pixely - (in_Height / 2);
+	
+	float3 moveRight = scale(right, stepPerPixel * movePixelX);
+	float3 moveUp = scale(up, stepPerPixel * movePixelY);
+
+	float3 dir2 = normalize(dir + moveRight + moveUp);
+
     Ray ray;
-    
     ray.posx = pos.x;
     ray.posy = pos.y;
     ray.posz = pos.z;
+    ray.dirx = dir2.x;
+    ray.diry = dir2.y;
+    ray.dirz = dir2.z;
 
-    int diffx = pixelx - origox;
-    int diffy = pixely - origoy;
-    
-    float thetax = stepAngle * (float)diffx;
-    float thetay = stepAngle * (float)diffy;
-
-    float3 rotateUp = normalize(RotateAxisAngle(up, dir, thetax));
-    float3 rotateUpAndRight = normalize(RotateAxisAngle(right, rotateUp, thetay));
-    
-    ray.dirx = rotateUpAndRight.x;
-    ray.diry = rotateUpAndRight.y;
-    ray.dirz = rotateUpAndRight.z;
-    
     ray.length = in_ZFar;
-
+    inout_DepthTexture[id] = in_ZFar;
+    
     inout_Rays[id] = ray;
 }
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
+float3 Ray_GetPoint(Ray *ray, float t)
+{
+    return ( ToFloat3(ray->posx, ray->posy, ray->posz) + ToFloat3(ray->dirx * t, ray->diry * t, ray->dirz * t) );
+}
+
+Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
+{
+    Hit ret;
+    ret.isCollision = 0;
+
+    float3 a = ToFloat3(tri->a.vx, tri->a.vy, tri->a.vz);
+    float3 b = ToFloat3(tri->b.vx, tri->b.vy, tri->b.vz);
+    float3 c = ToFloat3(tri->c.vx, tri->c.vy, tri->c.vz);
+    float3 normal = ToFloat3(tri->normalx, tri->normaly, tri->normalz);
+    float cost = dot(ToFloat3(ray->dirx, ray->diry, ray->dirz), normal);
+	if (fabs(cost) <= 0.0001) 
+		return ret;
+    
+	float t = dot(a - ToFloat3(ray->posx, ray->posy, ray->posz), normal) / cost;
+	if(t < 0.0001) 
+		return ret;
+    
+	float3 ip = Ray_GetPoint(ray, t);
+    
+	float c1 = dot(cross(b - a, ip - a), normal);
+	float c2 = dot(cross(c - b, ip - b), normal);
+	float c3 = dot(cross(a - c, ip - c), normal);
+	if (c1 >= 0 && c2 >= 0 && c3 >= 0) 
+    {
+		ret.isCollision = 1;
+        ret.pos = ip;
+        ret.normal = normal;
+        ret.t = t;
+        ret.materialId = tri->materialId;
+        //ret.uv = float2(0, 0);
+        return ret;
+    }
+	if (c1 <= 0 && c2 <= 0 && c3 <= 0) 
+    {
+        ret.isCollision = 1;
+        ret.pos = ip;
+        ret.normal = normal;;
+        ret.t = t;
+        ret.materialId = tri->materialId;
+        //ret.uv = float2(0, 0);
+        return ret;
+    }
+		
+	return ret;
+}
+
+int Intersect_RayBBox(Ray *ray, BBox *bbox) 
+{
+    Vector3 lb;
+    lb.x = bbox->minx;
+    lb.y = bbox->miny;
+    lb.z = bbox->minz;
+
+    Vector3 rt;
+    rt.x = bbox->maxx;
+    rt.y = bbox->maxy;
+    rt.z = bbox->maxz;
+
+    Vector3 dirfrac;
+    dirfrac.x = 1.0 / ray->dirx;
+    dirfrac.y = 1.0 / ray->diry;
+    dirfrac.z = 1.0 / ray->dirz;
+    
+    float t1 = (lb.x - ray->posx) * dirfrac.x;
+    float t2 = (rt.x - ray->posx) * dirfrac.x;
+    float t3 = (lb.y - ray->posy) * dirfrac.y;
+    float t4 = (rt.y - ray->posy) * dirfrac.y;
+    float t5 = (lb.z - ray->posz) * dirfrac.z;
+    float t6 = (rt.z - ray->posz) * dirfrac.z;
+    
+    float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+    float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+    
+    // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+    if (tmax < 0)
+    {
+        return 0;
+    }
+    
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax)
+    {
+        return 0;
+    }
+    
+    return 1;
+}
+
+float Distance_PointBox(float3 point, BBox *bbox)
+{
+    float3 min = ToFloat3(bbox->minx, bbox->miny, bbox->minz);
+    float3 max = ToFloat3(bbox->maxx, bbox->maxy, bbox->maxz);
+
+    if (bbox->minx < point.x && point.x < bbox->maxx
+     && bbox->miny < point.y && point.y < bbox->maxy
+     && bbox->minz < point.z && point.z < bbox->maxz)
+    {
+        return 0.0;
+    }
+
+    return length(ToFloat3(bbox->centerx, bbox->centery, bbox->centerz) - point);
+}
+
+void WriteTexture(__global unsigned char *texture, int width, int height, int pixelx, int pixely, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha)
+{
+    int id = (width * pixely * 4) + (pixelx * 4);
+    
+    texture[id + 0] = blue;
+    texture[id + 1] = green;
+    texture[id + 2] = red;
+    texture[id + 3] = alpha;
+}
+
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
-    int id = (in_Width * pixely * 4) + (pixelx * 4);
-    
-    // Ray hit not found
-    out_Texture[id + 0] = blue;
-    out_Texture[id + 1] = green;
-    out_Texture[id + 2] = red;
-    out_Texture[id + 3] = alpha;
+    int id = (in_Width * pixely) + pixelx;
+
+    Ray ray = in_Rays[id];
+    int isWriteTexture = 0;
+
+    for (int i = 0; i < in_NumBeginObjects; i++)
+    {
+        int rootId = in_BeginObjects[i];
+     
+        int stack[1000];
+        int top = -1;
+
+        top++;
+        stack[top] = rootId;
+
+        while(top != -1)
+        {
+            BVHNode temp_node = in_BVHNodes[stack[top]];
+            if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
+            {
+                // haromszog-ray utkozesvizsgalat
+                Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
+                if (hit.isCollision == 1)
+                {
+                    WriteTexture(out_Texture, in_Width, in_Height, pixelx, pixely, 255, 255, 255, 255);
+                    isWriteTexture = 1;
+                    top = -1;
+                    continue;
+                }
+            }
+            
+            top--;
+            
+            // bounding box vizsgalat
+            if (false == (temp_node.left == -1 && temp_node.right == -1) && 1 == Intersect_RayBBox(&ray, &(temp_node.bbox)))
+            {
+                bool haveLeft = false;
+                bool haveRight = false;
+                float distLeft = 1000000.0;
+                float distRight = 1000000.0;
+                if (temp_node.left != -1) { haveLeft = true; BBox bbox = in_BVHNodes[temp_node.left].bbox; distLeft = Distance_PointBox(ToFloat3(ray.posx, ray.posy, ray.posz), &bbox); }
+                if (temp_node.right != -1) { haveRight = true; BBox bbox = in_BVHNodes[temp_node.right].bbox; distLeft = Distance_PointBox(ToFloat3(ray.posx, ray.posy, ray.posz), &bbox); }
+                
+                if (haveLeft && haveRight) // ha van mindketto
+                {
+                    if (distLeft < distRight) // eloszor a kozelebbi kell
+                    {
+                        top++; stack[top] = temp_node.right;
+                        top++; stack[top] = temp_node.left;
+                    }
+                    else
+                    {
+                        top++; stack[top] = temp_node.left;
+                        top++; stack[top] = temp_node.right;
+                    }
+                }
+                else // ha csak egy van
+                {
+                    if (haveLeft) { top++; stack[top] = temp_node.left; }
+                    if (haveRight) { top++; stack[top] = temp_node.right; }
+                }
+            }
+        }
+    }
+
+    // clear
+    if (0 == isWriteTexture)
+    {
+        WriteTexture(out_Texture, in_Width, in_Height, pixelx, pixely, red, green, blue, alpha);
+    }
 }
 
 ";

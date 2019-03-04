@@ -41,45 +41,47 @@ namespace Project
             m_Scene.CreateDevice();
 
             Mutex mtxMutex = new Mutex();
-            
+
+            Random rand = new Random();
+
             Parallel.For(0, 1, index =>
             {
                 // load from obj file
                 string strDirectory = @".\";
                 OBJLoader objLoader = new OBJLoader();
-            
+                
                 mtxMutex.WaitOne();
                 objLoader.LoadFromFile(@strDirectory, @"Model.obj");
                 mtxMutex.ReleaseMutex();
-            
+                
                 // convert to triangle list
                 int iMatrixId = m_Scene.GenMatrix();
-                m_Scene.SetMatrix(iMatrixId, Matrix4.CreateTranslation(new Vector3(0, 0, 0)));
-            
+                m_Scene.SetMatrix(iMatrixId, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+                
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (OBJLoader.Material material in objLoader.materials)
                 {
                     string strDiffuseTextureName = @strDirectory + @material.texture_filename;
                     string strSpecularTextureName = @strDirectory + @"Specular.bmp";
                     string strNormalTextureName = @strDirectory + @"Normal.bmp";
-            
+                
                     int iMaterialId = m_Scene.GenMaterial();
                     m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
-            
+                
                     for (int i = 0; i < material.indices.Count; i += 3)
                     {
                         Vector3 vA = objLoader.vertices[material.indices[i + 0].id_vertex];
                         Vector3 vB = objLoader.vertices[material.indices[i + 1].id_vertex];
                         Vector3 vC = objLoader.vertices[material.indices[i + 2].id_vertex];
-            
+                
                         Vector3 nA = objLoader.normals[material.indices[i + 0].id_normal];
                         Vector3 nB = objLoader.normals[material.indices[i + 1].id_normal];
                         Vector3 nC = objLoader.normals[material.indices[i + 2].id_normal];
-            
+                
                         Vector2 tA = objLoader.text_coords[material.indices[i + 0].id_textcoord];
                         Vector2 tB = objLoader.text_coords[material.indices[i + 1].id_textcoord];
                         Vector2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
-            
+                
                         OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
                         vertexA.m_Vx = vA.X;
                         vertexA.m_Vy = vA.Y;
@@ -96,7 +98,7 @@ namespace Project
                         vertexA.m_fWeight2 = 0.0f;
                         vertexA.m_iMatrixId3 = -1;
                         vertexA.m_fWeight3 = 0.0f;
-            
+                
                         OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
                         vertexB.m_Vx = vB.X;
                         vertexB.m_Vy = vB.Y;
@@ -113,7 +115,7 @@ namespace Project
                         vertexB.m_fWeight2 = 0.0f;
                         vertexB.m_iMatrixId3 = -1;
                         vertexB.m_fWeight3 = 0.0f;
-            
+                
                         OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
                         vertexC.m_Vx = vC.X;
                         vertexC.m_Vy = vC.Y;
@@ -130,25 +132,25 @@ namespace Project
                         vertexC.m_fWeight2 = 0.0f;
                         vertexC.m_iMatrixId3 = -1;
                         vertexC.m_fWeight3 = 0.0f;
-            
+                
                         OpenCLRenderer.Triangle newTriangle = new OpenCLRenderer.Triangle();
                         newTriangle.m_A = vertexA;
                         newTriangle.m_B = vertexB;
                         newTriangle.m_C = vertexC;
                         newTriangle.m_iMaterialId = iMaterialId;
-            
+                
                         triangles.Add(newTriangle);
                     }
                 }
-            
+
                 int iId;
-                //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateTranslation(new Vector3(0, 0, 0)));
-                //m_Scene.SetObject(iId, staticObject);
-            
                 iId = m_Scene.GenObject();
-                OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
-                m_Scene.SetObject(iId, dynamicObject);
+                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+                m_Scene.SetObject(iId, staticObject);
+            
+                //iId = m_Scene.GenObject();
+                //OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
+                //m_Scene.SetObject(iId, dynamicObject);
             
                 triangles.Clear();
                 objLoader.Release();
@@ -184,7 +186,7 @@ namespace Project
 
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
-            m_Scene.SetCamera(new Vector3(0, 0, 10), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
+            m_Scene.SetCamera(new Vector3(10, 10, 15), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
             m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
