@@ -851,6 +851,8 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
         while(top != -1)
         {
             BVHNode temp_node = in_BVHNodes[stack[top]];
+            top--;
+
             if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
             {
                 // haromszog-ray utkozesvizsgalat
@@ -863,11 +865,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                     continue;
                 }
             }
-            
-            top--;
-            
-            // bounding box vizsgalat
-            if (false == (temp_node.left == -1 && temp_node.right == -1) && 1 == Intersect_RayBBox(&ray, &(temp_node.bbox)))
+            else if (1 == Intersect_RayBBox(&ray, &(temp_node.bbox))) // ha box
             {
                 bool haveLeft = false;
                 bool haveRight = false;
