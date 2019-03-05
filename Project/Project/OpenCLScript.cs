@@ -667,12 +667,20 @@ float3 RotateAxisAngle(float3 axis, float3 v, float theta)
     return rotated;
 }
 
-float3 scale(float3 point, float scale)
+float3 scale3(float3 point, float scale)
 {
 	float3 ret;
 	ret.x = point.x * scale;
 	ret.y = point.y * scale;
 	ret.z = point.z * scale;
+	return ret;
+}
+
+float2 scale2(float2 point, float scale)
+{
+	float2 ret;
+	ret.x = point.x * scale;
+	ret.y = point.y * scale;
 	return ret;
 }
 
@@ -693,8 +701,8 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
     int movePixelX = pixelx - (in_Width / 2);
 	int movePixelY = pixely - (in_Height / 2);
 
-    float3 moveUp = scale(up, movePixelY * stepPerPixel);
-    float3 moveRight = scale(right, movePixelX * stepPerPixel);
+    float3 moveUp = scale3(up, movePixelY * stepPerPixel);
+    float3 moveRight = scale3(right, movePixelX * stepPerPixel);
 
     float3 dir2 = normalize(dir + moveUp + moveRight);
 
@@ -819,17 +827,54 @@ float Distance_PointBox(float3 point, BBox *bbox)
     return length(ToFloat3(bbox->centerx, bbox->centery, bbox->centerz) - point);
 }
 
-void WriteTexture(__global unsigned char *texture, int width, int height, int pixelx, int pixely, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha)
+void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, float4 color)
 {
-    int id = (width * pixely * 4) + (pixelx * 4);
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
-    texture[id + 0] = blue;
-    texture[id + 1] = green;
-    texture[id + 2] = red;
-    texture[id + 3] = alpha;
+    texture[id + 0] = (unsigned char)(color.z * 255.0f);
+    texture[id + 1] = (unsigned char)(color.y * 255.0f);
+    texture[id + 2] = (unsigned char)(color.x * 255.0f);
+    texture[id + 3] = (unsigned char)(color.w * 255.0f);
 }
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global unsigned char *out_Texture)
+float4 ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
+{
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
+    
+    float4 color;
+    color.z = ((float)texture[id + 0] / 255.0f);
+    color.y = ((float)texture[id + 1] / 255.0f);
+    color.x = ((float)texture[id + 2] / 255.0f);
+    color.w = ((float)texture[id + 3] / 255.0f);
+
+    return color;
+}
+
+float4 Tex2D(__global unsigned char *texture, int width, int height, float3 A, float3 B, float3 C, float2 tA, float2 tB, float2 tC, float3 P)
+{
+    float3 u = B - A;
+    float3 v = C - A;
+    float3 w = P - A;
+
+    float s = ((dot(u, v) * dot(w, v)) - (dot(v, v) * dot(w, u))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
+    float t = ((dot(u, v) * dot(w, u)) - (dot(u, u) * dot(w, v))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
+
+    float2 tu = tB - tA;
+    float2 tv = tC - tA;
+
+    float2 pixel = (scale2(tu, s) + scale2(tv, t));
+
+    pixel.x = remainder(pixel.x, 1.0f);
+    pixel.y = remainder(pixel.y, 1.0f);
+    pixel.x *= width;
+    pixel.y *= height;
+
+    float4 ret = ReadTexture(texture, width, height, pixel);
+    return ret;
+}
+
+
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, float red, float green, float blue, float alpha, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -859,7 +904,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                 Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
                 if (hit.isCollision == 1)
                 {
-                    WriteTexture(out_Texture, in_Width, in_Height, pixelx, pixely, 255, 255, 255, 255);
+                    WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), (float4)(1.0f, 1.0f, 1.0f, 1.0f));
                     isWriteTexture = 1;
                     top = -1;
                     continue;
@@ -899,7 +944,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     // clear
     if (0 == isWriteTexture)
     {
-        WriteTexture(out_Texture, in_Width, in_Height, pixelx, pixely, red, green, blue, alpha);
+        WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), (float4)(red, green, blue, alpha));
     }
 }
 

@@ -187,7 +187,7 @@ namespace Project
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
             m_Scene.SetCamera(new Vector3(10, 10, 15), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
-            m_Scene.RunRayShader(127, 127, 255, 255);
+            m_Scene.RunRayShader(0.5f, 0.5f, 1.0f, 1.0f);
 
             image.Source = m_Scene.GetWriteableBitmap();
         }

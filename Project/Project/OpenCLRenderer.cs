@@ -1052,7 +1052,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void RunRayShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
+        public void RunRayShader(float fRed, float fGreen, float fBlue, float fAlpha)
         {
             m_mtxMutex.WaitOne();
 
@@ -1063,10 +1063,10 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(4, clInputOutput_DepthTextureBuffer);
             KernelRayShader.SetValueArgument<int>(5, m_iWidth);
             KernelRayShader.SetValueArgument<int>(6, m_iHeight);
-            KernelRayShader.SetValueArgument<byte>(7, iRed);
-            KernelRayShader.SetValueArgument<byte>(8, iGreen);
-            KernelRayShader.SetValueArgument<byte>(9, iBlue);
-            KernelRayShader.SetValueArgument<byte>(10, iAlpha);
+            KernelRayShader.SetValueArgument<float>(7, fRed);
+            KernelRayShader.SetValueArgument<float>(8, fGreen);
+            KernelRayShader.SetValueArgument<float>(9, fBlue);
+            KernelRayShader.SetValueArgument<float>(10, fAlpha);
             KernelRayShader.SetMemoryArgument(11, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
