@@ -163,7 +163,16 @@ namespace OpenCLRenderer
             {
                 ComputeContextPropertyList properties = new ComputeContextPropertyList(platform);
 
-                ComputeContext newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
+                ComputeContext newContext = null;
+                try
+                {
+                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
+                }
+                catch (Exception ex)
+                {
+                    ex.ToString();
+                    continue;
+                }
 
                 ComputeDevice[] devices = newContext.Devices.ToArray();
 

@@ -81,6 +81,14 @@ namespace Project
             current_skeleton = new Skeleton();
         }
 
+        float ToFloat(string text)
+        {
+            text = text.Replace(',', '.');
+            float value;
+            float.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
+            return value;
+        }
+
         public bool LoadReference(string directory, string filename, Mesh mesh)
         {
             string[] lines = File.ReadAllText(directory + @"/" + filename).Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -133,7 +141,7 @@ namespace Project
                 {
                     if (words[0] == "end") { is_skeleton = false; continue; }
 
-                    reference_skeleton.bones.Add(new Bone(new Vector3(float.Parse(words[1], new CultureInfo("en-US")), float.Parse(words[2], new CultureInfo("en-US")), float.Parse(words[3], new CultureInfo("en-US"))), new Vector3(float.Parse(words[4], new CultureInfo("en-US")), float.Parse(words[5], new CultureInfo("en-US")), float.Parse(words[6], new CultureInfo("en-US")))));
+                    reference_skeleton.bones.Add(new Bone(new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3])), new Vector3(ToFloat(words[4]), ToFloat(words[5]), ToFloat(words[6]))));
                 }
 
                 if (is_triangles_texturename)
@@ -171,9 +179,9 @@ namespace Project
                         int matrix_id = int.Parse(words[0]);
                         float weight = 1.0f;
                         // vertex
-                        Vector3 v = new Vector3(float.Parse(words[1], new CultureInfo("en-US")), float.Parse(words[2], new CultureInfo("en-US")), float.Parse(words[3], new CultureInfo("en-US")));
+                        Vector3 v = new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3]));
                         // textcoords
-                        Vector2 t = new Vector2(float.Parse(words[7], new CultureInfo("en-US")), float.Parse(words[8], new CultureInfo("en-US")));
+                        Vector2 t = new Vector2(ToFloat(words[7]), ToFloat(words[8]));
 
                         Mesh.Vertex vertex = new Mesh.Vertex(v, t);
 
@@ -190,9 +198,9 @@ namespace Project
                         mesh.is_hl2 = true;
 
                         // vertex
-                        Vector3 v = new Vector3(float.Parse(words[1], new CultureInfo("en-US")), float.Parse(words[2], new CultureInfo("en-US")), float.Parse(words[3], new CultureInfo("en-US")));
+                        Vector3 v = new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3]));
                         // textcoords
-                        Vector2 t = new Vector2(float.Parse(words[7], new CultureInfo("en-US")), float.Parse(words[8], new CultureInfo("en-US")));
+                        Vector2 t = new Vector2(ToFloat(words[7]), ToFloat(words[8]));
 
                         Mesh.Vertex vertex = new Mesh.Vertex(v, t);
 
@@ -202,8 +210,8 @@ namespace Project
                         for (int i = 0; i < n; i++)
                         {
                             // matrix
-                            int matrix_id = int.Parse(words[id++], new CultureInfo("en-US"));
-                            float weight = float.Parse(words[id++], new CultureInfo("en-US"));
+                            int matrix_id = int.Parse(words[id++]);
+                            float weight = ToFloat(words[id++]);
 
                             // add
                             vertex.AddMatrix(matrix_id, weight);
@@ -350,7 +358,7 @@ namespace Project
 
                 if (is_time)
                 {
-                    skeleton.bones.Add(new Bone(new Vector3(float.Parse(words[1], new CultureInfo("en-US")), float.Parse(words[2], new CultureInfo("en-US")), float.Parse(words[3], new CultureInfo("en-US"))), new Vector3(float.Parse(words[4], new CultureInfo("en-US")), float.Parse(words[5], new CultureInfo("en-US")), float.Parse(words[6], new CultureInfo("en-US")))));
+                    skeleton.bones.Add(new Bone(new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3])), new Vector3(ToFloat(words[4]), ToFloat(words[5]), ToFloat(words[6]))));
                 }
             }
 
