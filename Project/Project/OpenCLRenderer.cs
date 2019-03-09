@@ -277,8 +277,8 @@ namespace OpenCLRenderer
             Material newMaterial = new Material();
 
             newMaterial.m_DiffuseTexture  = CreateTextureFromFile(@strDiffuseFileName);
-            //newMaterial.m_NormalTexture = CreateTextureFromFile(@strSpecularFileName);
-            //newMaterial.m_SpecularTexture = CreateTextureFromFile(@strNormalFileName);
+            newMaterial.m_NormalTexture = CreateTextureFromFile(@strSpecularFileName);
+            newMaterial.m_SpecularTexture = CreateTextureFromFile(@strNormalFileName);
 
             m_listMaterials[iId] = newMaterial;
             m_mtxMutex.ReleaseMutex();
@@ -906,7 +906,7 @@ namespace OpenCLRenderer
 
             // matrixok betoltese
             if (null != clInput_MatricesData) { clInput_MatricesData.Dispose(); clInput_MatricesData = null; }
-            clInput_MatricesData = new ComputeBuffer<Matrix>(m_Context, ComputeMemoryFlags.ReadOnly | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
+            clInput_MatricesData = new ComputeBuffer<Matrix>(m_Context, ComputeMemoryFlags.ReadWrite | ComputeMemoryFlags.CopyHostPointer, m_listMatrices.ToArray());
 
             // global bvh nodes, count
             m_iNumBVHNodes = listAllBVHNodes.Count;
@@ -953,6 +953,19 @@ namespace OpenCLRenderer
                 listLevelXBVHsOffsets.Clear();
             }
             listAllLevelXBVHsOffsets.Clear();
+
+            m_mtxMutex.ReleaseMutex();
+        }
+
+        public void UpdateMatrices()
+        {
+            m_mtxMutex.WaitOne();
+
+            ComputeEventList eventList = new ComputeEventList();
+            cmdQueue.WriteToBuffer(m_listMatrices.ToArray(), clInput_MatricesData, true, eventList);
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1077,8 +1090,6 @@ namespace OpenCLRenderer
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
 
-            SysIntX3 offset = new SysIntX3(0, 0, 0);
-            SysIntX3 region = new SysIntX3(m_iWidth, m_iHeight, 4);
             IntPtr source = cmdQueue.Map(clOutput_TextureBuffer, true, ComputeMemoryMappingFlags.Read, 0, m_iWidth * m_iHeight * 4, eventList);
             cmdQueue.Finish();
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
@@ -1088,6 +1099,9 @@ namespace OpenCLRenderer
             Win32.CopyMemory(writeableBitmap.BackBuffer, source, m_iWidth * m_iHeight * 4);
             writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, m_iWidth, m_iHeight));
             writeableBitmap.Unlock();
+
+            cmdQueue.Unmap(clOutput_TextureBuffer, ref source, null);
+            cmdQueue.Finish();
 
             m_mtxMutex.ReleaseMutex();
         }
