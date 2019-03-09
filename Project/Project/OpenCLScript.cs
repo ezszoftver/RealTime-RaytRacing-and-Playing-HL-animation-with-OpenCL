@@ -38,6 +38,14 @@ typedef struct
 }
 Matrix4x4;
 
+float2 ToFloat2(float x, float y)
+{
+    float2 ret;
+    ret.x = x;
+    ret.y = y;
+    return ret;
+}
+
 float3 ToFloat3(float x, float y, float z)
 {
     float3 ret;
@@ -412,6 +420,31 @@ typedef struct
     int count;
 }
 BVHNodeOffset;
+
+typedef struct
+{
+    unsigned long offset;
+    int width;
+    int height;
+}
+Texture;
+    
+typedef struct
+{
+    Texture diffuseTexture;
+    //Texture specularTexture;
+    //Texture normalTexture;
+}
+Material;
+
+typedef struct 
+{
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
+    unsigned char alpha;
+}
+Color;
 
 BBox GenBBox_Tri(Triangle tri)
 {
@@ -827,54 +860,208 @@ float Distance_PointBox(float3 point, BBox *bbox)
     return length(ToFloat3(bbox->centerx, bbox->centery, bbox->centerz) - point);
 }
 
-void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, float4 color)
+
+
+
+
+
+
+
+
+
+typedef struct
 {
-    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
-    
-    texture[id + 0] = (unsigned char)(color.z * 255.0f);
-    texture[id + 1] = (unsigned char)(color.y * 255.0f);
-    texture[id + 2] = (unsigned char)(color.x * 255.0f);
-    texture[id + 3] = (unsigned char)(color.w * 255.0f);
+    float x;
+    float y;
+}
+Vector2;
+
+Vector2 ToVector2(float2 p)
+{
+    Vector2 ret;
+    ret.x = p.x;
+    ret.y = p.y;
+    return ret;
 }
 
-float4 ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
+Vector3 ToVector3(float3 p)
 {
-    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
-    
-    float4 color;
-    color.z = ((float)texture[id + 0] / 255.0f);
-    color.y = ((float)texture[id + 1] / 255.0f);
-    color.x = ((float)texture[id + 2] / 255.0f);
-    color.w = ((float)texture[id + 3] / 255.0f);
-
-    return color;
+    Vector3 ret;
+    ret.x = p.x;
+    ret.y = p.y;
+    ret.z = p.z;
+    return ret;
 }
 
-float4 Tex2D(__global unsigned char *texture, int width, int height, float3 A, float3 B, float3 C, float2 tA, float2 tB, float2 tC, float3 P)
+typedef struct
 {
-    float3 u = B - A;
-    float3 v = C - A;
-    float3 w = P - A;
+    float x;
+    float y;
+    float z;
+    float w;
+}
+Vector4;
 
-    float s = ((dot(u, v) * dot(w, v)) - (dot(v, v) * dot(w, u))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
-    float t = ((dot(u, v) * dot(w, u)) - (dot(u, u) * dot(w, v))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
+Vector3 Sub(Vector3 a, Vector3 b)
+{
+    Vector3 ret;
+    ret.x = a.x - b.x;
+    ret.y = a.y - b.y;
+    ret.z = a.z - b.z;
+    return ret;
+}
 
-    float2 tu = tB - tA;
-    float2 tv = tC - tA;
+Vector2 Sub_Vector2Vector2(Vector2 a, Vector2 b)
+{
+    Vector2 ret;
+    ret.x = a.x - b.x;
+    ret.y = a.y - b.y;
+    return ret;
+}
 
-    float2 pixel = (scale2(tu, s) + scale2(tv, t));
+float Length(Vector3 v)
+{
+    float length = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return length;
+}
 
-    pixel.x = remainder(pixel.x, 1.0f);
-    pixel.y = remainder(pixel.y, 1.0f);
-    pixel.x *= width;
-    pixel.y *= height;
+Vector3 Normalize(Vector3 v)
+{
+    float length = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    Vector3 ret;
+    ret.x = v.x / length;
+    ret.y = v.y / length;
+    ret.z = v.z / length;
+    return ret;
+}
 
-    float4 ret = ReadTexture(texture, width, height, pixel);
+Vector3 Cross(Vector3 a, Vector3 b)
+{
+    Vector3 ret;
+    ret.x = a.y * b.z - a.z * b.y;
+    ret.y = a.z * b.x - a.x * b.z;
+    ret.z = a.x * b.y - a.y * b.x;
+    return ret;
+}
+
+Vector3 Div(Vector3 v, float w)
+{
+    Vector3 ret;
+    ret.x = v.x / w;
+    ret.y = v.y / w;
+    ret.z = v.z / w;
+    return ret;
+}
+
+Vector3 Add_Vector3Vector3(Vector3 a, Vector3 b)
+{
+    Vector3 ret;
+    ret.x = a.x + b.x;
+    ret.y = a.y + b.y;
+    ret.z = a.z + b.z;
+    return ret;
+}
+
+Vector2 Add_Vector2Vector2(Vector2 a, Vector2 b)
+{
+    Vector2 ret;
+    ret.x = a.x + b.x;
+    ret.y = a.y + b.y;
+    return ret;
+}
+
+Vector3 Dot_Vector3Float(Vector3 v, float t)
+{
+    Vector3 ret;
+    ret.x = v.x * t;
+    ret.y = v.y * t;
+    ret.z = v.z * t;
+    return ret;
+}
+
+Vector2 Dot_Vector2Float(Vector2 v, float t)
+{
+    Vector2 ret;
+    ret.x = v.x * t;
+    ret.y = v.y * t;
+    return ret;
+}
+
+float Dot(Vector3 a, Vector3 b)
+{
+    float ret;
+    ret = a.x * b.x + a.y * b.y + a.z * b.z;
     return ret;
 }
 
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, float red, float green, float blue, float alpha, __global unsigned char *out_Texture)
+
+
+
+
+
+
+
+
+
+
+
+void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, Color color)
+{
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
+    
+    texture[id + 0] = color.blue;
+    texture[id + 1] = color.green;
+    texture[id + 2] = color.red;
+    texture[id + 3] = color.alpha;
+}
+
+Color ReadTexture(__global unsigned char *texture, int width, int height, Vector2 pixel)
+{
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
+    
+    Color color;
+    color.blue  = texture[id + 0];
+    color.green = texture[id + 1];
+    color.red   = texture[id + 2];
+    color.alpha = texture[id + 3];
+
+    return color;
+}
+
+
+
+Color Tex2D(__global unsigned char *texture, int width, int height, Vector3 A, Vector3 B, Vector3 C, Vector2 tA, Vector2 tB, Vector2 tC, Vector3 P)
+{
+    Vector3 u = Sub(B, A);
+    Vector3 v = Sub(C, A);
+    Vector3 w = Sub(P, A);
+
+    float s = ((Dot(u, v) * Dot(w, v)) - (Dot(v, v) * Dot(w, u))) / ((Dot(u, v) * Dot(u, v)) - (Dot(u, u) * Dot(v, v)));
+    float t = ((Dot(u, v) * Dot(w, u)) - (Dot(u, u) * Dot(w, v))) / ((Dot(u, v) * Dot(u, v)) - (Dot(u, u) * Dot(v, v)));
+
+    Vector2 tu = Sub_Vector2Vector2(tB, tA);
+    Vector2 tv = Sub_Vector2Vector2(tC, tA);
+
+    Vector2 pixel;
+    pixel = Add_Vector2Vector2
+            (
+                tA, 
+                Add_Vector2Vector2
+                (
+                    Dot_Vector2Float(tu, s), 
+                    Dot_Vector2Float(tv, t)
+                )
+            );
+
+    pixel.x = ((float)pixel.x * (float)width);
+    pixel.y = ((float)pixel.y * (float)height);
+
+    Color ret = ReadTexture(texture, width, height, pixel);
+    return ret;
+}
+
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, float red, float green, float blue, float alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -902,41 +1089,35 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
             {
                 // haromszog-ray utkozesvizsgalat
                 Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
-                if (hit.isCollision == 1)
+                if (hit.isCollision == 1 && hit.t < inout_DepthTexture[id])
                 {
-                    WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), (float4)(1.0f, 1.0f, 1.0f, 1.0f));
+                    inout_DepthTexture[id] = hit.t;
+
+                    Material material = materials[hit.materialId];
+                    unsigned int offset = 0;//material.diffuseTexture.offset;
+                    int width = 1024;//material.diffuseTexture.width;
+                    int height = 1024;//material.diffuseTexture.height;
+                    __global unsigned char *texture = &(textureDatas[offset]);
+
+                    Vector3 A = ToVector3(ToFloat3(temp_node.triangle.a.vx, temp_node.triangle.a.vy, temp_node.triangle.a.vz));
+                    Vector3 B = ToVector3(ToFloat3(temp_node.triangle.b.vx, temp_node.triangle.b.vy, temp_node.triangle.b.vz));
+                    Vector3 C = ToVector3(ToFloat3(temp_node.triangle.c.vx, temp_node.triangle.c.vy, temp_node.triangle.c.vz));
+                    Vector3 P = ToVector3(hit.pos);
+                    Vector2 tA = ToVector2(ToFloat2(temp_node.triangle.a.tx, temp_node.triangle.a.ty));
+                    Vector2 tB = ToVector2(ToFloat2(temp_node.triangle.b.tx, temp_node.triangle.b.ty));
+                    Vector2 tC = ToVector2(ToFloat2(temp_node.triangle.c.tx, temp_node.triangle.c.ty));
+
+                    Color color = Tex2D(texture, width, height, A, B, C, tA, tB, tC, P);
+                    WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), color);
                     isWriteTexture = 1;
-                    top = -1;
-                    continue;
+                    //top = -1;
+                    //continue;
                 }
             }
             else if (1 == Intersect_RayBBox(&ray, &(temp_node.bbox))) // ha box
             {
-                bool haveLeft = false;
-                bool haveRight = false;
-                float distLeft = 1000000.0;
-                float distRight = 1000000.0;
-                if (temp_node.left != -1) { haveLeft = true; BBox bbox = in_BVHNodes[temp_node.left].bbox; distLeft = Distance_PointBox(ToFloat3(ray.posx, ray.posy, ray.posz), &bbox); }
-                if (temp_node.right != -1) { haveRight = true; BBox bbox = in_BVHNodes[temp_node.right].bbox; distLeft = Distance_PointBox(ToFloat3(ray.posx, ray.posy, ray.posz), &bbox); }
-                
-                if (haveLeft && haveRight) // ha van mindketto
-                {
-                    if (distLeft < distRight) // eloszor a kozelebbi kell
-                    {
-                        top++; stack[top] = temp_node.right;
-                        top++; stack[top] = temp_node.left;
-                    }
-                    else
-                    {
-                        top++; stack[top] = temp_node.left;
-                        top++; stack[top] = temp_node.right;
-                    }
-                }
-                else // ha csak egy van
-                {
-                    if (haveLeft) { top++; stack[top] = temp_node.left; }
-                    if (haveRight) { top++; stack[top] = temp_node.right; }
-                }
+                if (temp_node.left != -1) { top++; stack[top] = temp_node.left; }
+                if (temp_node.right != -1) { top++; stack[top] = temp_node.right; }
             }
         }
     }
@@ -944,7 +1125,12 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     // clear
     if (0 == isWriteTexture)
     {
-        WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), (float4)(red, green, blue, alpha));
+        Color background;
+        background.red = 127;
+        background.green = 127;
+        background.blue = 255;
+        background.alpha = 255;
+        WriteTexture(out_Texture, in_Width, in_Height, (float2)(pixelx, pixely), background);
     }
 }
 

@@ -111,8 +111,8 @@ namespace OpenCLRenderer
     struct Material
     {
         public Texture m_DiffuseTexture;
-        public Texture m_SpecularTexture;
-        public Texture m_NormalTexture;
+        //public Texture m_SpecularTexture;
+        //public Texture m_NormalTexture;
     }
 
     struct BVHObject
@@ -277,8 +277,8 @@ namespace OpenCLRenderer
             Material newMaterial = new Material();
 
             newMaterial.m_DiffuseTexture  = CreateTextureFromFile(@strDiffuseFileName);
-            newMaterial.m_NormalTexture = CreateTextureFromFile(@strSpecularFileName);
-            newMaterial.m_SpecularTexture = CreateTextureFromFile(@strNormalFileName);
+            //newMaterial.m_NormalTexture = CreateTextureFromFile(@strSpecularFileName);
+            //newMaterial.m_SpecularTexture = CreateTextureFromFile(@strNormalFileName);
 
             m_listMaterials[iId] = newMaterial;
             m_mtxMutex.ReleaseMutex();
@@ -1067,7 +1067,9 @@ namespace OpenCLRenderer
             KernelRayShader.SetValueArgument<float>(8, fGreen);
             KernelRayShader.SetValueArgument<float>(9, fBlue);
             KernelRayShader.SetValueArgument<float>(10, fAlpha);
-            KernelRayShader.SetMemoryArgument(11, clOutput_TextureBuffer);
+            KernelRayShader.SetMemoryArgument(11, clInput_Materials);
+            KernelRayShader.SetMemoryArgument(12, clInput_TexturesData);
+            KernelRayShader.SetMemoryArgument(13, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
