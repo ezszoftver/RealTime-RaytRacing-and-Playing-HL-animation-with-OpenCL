@@ -222,6 +222,15 @@ namespace OpenCLRenderer
             Application.Current.Shutdown();
         }
 
+        public int NumMatrices()
+        {
+            m_mtxMutex.WaitOne();
+            int iRet = m_listMatrices.Count();
+            m_mtxMutex.ReleaseMutex();
+
+            return iRet;
+        }
+
         // Matrix
         public int GenMatrix()
         {
