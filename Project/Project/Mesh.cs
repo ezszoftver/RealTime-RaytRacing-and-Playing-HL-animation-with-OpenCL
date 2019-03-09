@@ -294,8 +294,8 @@ namespace Project
 
             transforms.Clear();
             transforms = null;
-            inverse_transforms_reference.Clear();
-            inverse_transforms_reference = null;
+            //inverse_transforms_reference.Clear();
+            //inverse_transforms_reference = null;
 
             if (is_delete_textures) { materials.Clear(); }
         }

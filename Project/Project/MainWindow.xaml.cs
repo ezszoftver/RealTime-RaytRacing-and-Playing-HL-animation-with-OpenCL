@@ -155,17 +155,24 @@ namespace Project
                 mesh = new Mesh();
 
                 mtxMutex.WaitOne();
-                smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
-                smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
-                
+                //smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
+                //smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
+
+                smd.LoadReference(@strDirectory, @"LOD_1.smd", mesh);
+                smd.AddAnimation(@strDirectory, @"Antlion_idle.smd", "Anim1", 30.0f);
+
                 smd.SetAnimation("Anim1");
 
-                int iMatrixOffset = m_Scene.NumMatrices();
+                //int iMatrixOffset = m_Scene.NumMatrices();
                 for (int i = 0; i < mesh.transforms.Count; i++)
                 {
                     int iMatrixId = m_Scene.GenMatrix();
                     m_Scene.SetMatrix(iMatrixId, smd.GetMatrix(i) * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
                 }
+
+                //int iMatrixId = m_Scene.GenMatrix();
+                //m_Scene.SetMatrix(iMatrixId, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+
                 mtxMutex.ReleaseMutex();
 
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
@@ -212,21 +219,21 @@ namespace Project
                         {
                             if (j == 0)
                             {
-                                vertexA.m_iMatrixId1 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight1 = meshVertexA.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexA.m_iMatrixId2 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight2 = meshVertexA.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexA.m_iMatrixId3 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight3 = meshVertexA.matrices[j].weight;
                             }
                         }
-                        
+
                         OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
                         vertexB.m_Vx = vB.X;
                         vertexB.m_Vy = vB.Y;
@@ -239,20 +246,19 @@ namespace Project
                         vertexB.m_iNumMatrices = meshVertexB.matrices.Count;
                         for (int j = 0; j < vertexB.m_iNumMatrices; j++)
                         {
-                            
                             if (j == 0)
                             {
-                                vertexB.m_iMatrixId1 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight1 = meshVertexB.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexB.m_iMatrixId2 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight2 = meshVertexB.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexB.m_iMatrixId3 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight3 = meshVertexB.matrices[j].weight;
                             }
                         }
@@ -271,17 +277,17 @@ namespace Project
                         {
                             if (j == 0)
                             {
-                                vertexC.m_iMatrixId1 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight1 = meshVertexC.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexC.m_iMatrixId2 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight2 = meshVertexC.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexC.m_iMatrixId3 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight3 = meshVertexC.matrices[j].weight;
                             }
                         }
@@ -346,7 +352,7 @@ namespace Project
             m_Scene.UpdateMatrices();
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
-            m_Scene.SetCamera(new Vector3(5, 10, 15), new Vector3(0, 7.5f, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 100.0f);
+            m_Scene.SetCamera(new Vector3(-100, 100, -100), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
             m_Scene.RunRayShader(0.5f, 0.5f, 1.0f, 1.0f);
 
             image.Source = m_Scene.GetWriteableBitmap();

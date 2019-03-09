@@ -85,7 +85,7 @@ namespace Project
         {
             text = text.Replace(',', '.');
             float value;
-            float.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
+            value = float.Parse(text, NumberStyles.Any, CultureInfo.InvariantCulture);
             return value;
         }
 
@@ -265,10 +265,11 @@ namespace Project
 
             mesh.inverse_transforms_reference = new List<Matrix4>();
             for (int i = 0; i < reference_skeleton.bones.Count(); i++) { mesh.inverse_transforms_reference.Add(new Matrix4()); }
-
+            
             for (int i = 0; i < reference_skeleton.bones.Count(); i++)
             {
-                Matrix4 invert = GetReferenceMatrix(i).Inverted();
+                Matrix4 invert = GetReferenceMatrix(i);
+                invert.Invert();
                 mesh.inverse_transforms_reference[i] = invert;
             }
 
@@ -286,10 +287,8 @@ namespace Project
                         inverseTransform += mesh.inverse_transforms_reference[vertex.matrices[i].matrix_id] * vertex.matrices[i].weight;
                     }
 
-                    inverseTransform.Transpose();
-
                     // vertex
-                    vertex.vertex = new Vector3(inverseTransform * new Vector4(vertex.vertex, 1.0f));
+                    vertex.vertex = new Vector3(new Vector4(vertex.vertex, 1.0f) * inverseTransform);
             
                     // normal
                     ;

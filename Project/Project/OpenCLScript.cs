@@ -91,33 +91,6 @@ float4 Mult_Matrix4x4Float4(Matrix4x4 T, float4 v)
     return ret;
 }
 
-Matrix4x4 Mult_Matrix4x4Float(Matrix4x4 T, float scale)
-{
-    Matrix4x4 ret;
-
-    ret.m11 = T.m11 * scale;
-    ret.m12 = T.m12;
-    ret.m13 = T.m13;
-    ret.m14 = T.m14;
-
-    ret.m21 = T.m21;
-    ret.m22 = T.m22 * scale;
-    ret.m23 = T.m23;
-    ret.m24 = T.m24;
-
-    ret.m31 = T.m31;
-    ret.m32 = T.m32;
-    ret.m33 = T.m33 * scale;
-    ret.m34 = T.m34;
-
-    ret.m41 = T.m41;
-    ret.m42 = T.m42;
-    ret.m43 = T.m43;
-    ret.m44 = T.m44;
-
-    return ret;
-}
-
 Matrix4x4 Mult_Matrix4x4Matrix4x4(Matrix4x4 T2, Matrix4x4 T1)
 {
     Matrix4x4 ret;
@@ -336,7 +309,6 @@ typedef struct
     float3 normal;
     float t;
     int materialId;
-    float2 uv;
     int isCollision;
 }
 Hit;
@@ -550,6 +522,33 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     return bbox;
 }
 
+float3 scale4(float4 point, float scale)
+{
+	float3 ret;
+	ret.x = point.x * scale;
+	ret.y = point.y * scale;
+	ret.z = point.z * scale;
+	return ret;
+}
+
+float3 scale3(float3 point, float scale)
+{
+	float3 ret;
+	ret.x = point.x * scale;
+	ret.y = point.y * scale;
+	ret.z = point.z * scale;
+	return ret;
+}
+
+float2 scale2(float2 point, float scale)
+{
+	float2 ret;
+	ret.x = point.x * scale;
+	ret.y = point.y * scale;
+	return ret;
+}
+
+
 Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
     Vertex out;
@@ -564,52 +563,11 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
     out.weight2     = in.weight2;
     out.weight3     = in.weight3;
 
-    if (in.numMatrices == 0) 
-    {
-        out = in;
-    }
-    else if (in.numMatrices == 1) 
-    {
-        float4 v = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-        out.vx = v.x;
-        out.vy = v.y;
-        out.vz = v.z;
-
-        float4 n = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        out.nx = n.x;
-        out.ny = n.y;
-        out.nz = n.z;
-    }
-    else if (in.numMatrices == 2)
-    {
-        float4 v1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-        float4 v2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-        out.vx = v1.x + v2.x;
-        out.vy = v1.y + v2.y;
-        out.vz = v1.z + v2.z;
+    float4 v = Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f));
+    out.vx = v.x;
+    out.vy = v.y;
+    out.vz = v.z;
     
-        float4 n1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        float4 n2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        out.nx = n1.x + n2.x;
-        out.ny = n1.y + n2.y;
-        out.nz = n1.z + n2.z;
-    }
-    else if (in.numMatrices == 3)
-    {
-        float4 v1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.vx, in.vy, in.vz, 1.0f)); 
-        float4 v2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-        float4 v3 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-        out.vx = v1.x + v2.x + v3.x;
-        out.vy = v1.y + v2.y + v3.y;
-        out.vx = v1.z + v2.z + v3.z;
-        
-        float4 n1 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId1], in.weight1), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        float4 n2 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId2], in.weight2), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        float4 n3 = Mult_Matrix4x4Float4(Mult_Matrix4x4Float(in_Matrices[in.matrixId3], in.weight3), ToFloat4(in.nx, in.ny, in.nz, 0.0f));
-        out.nx = n1.x + n2.x + n3.x;
-        out.ny = n1.y + n2.y + n3.y;
-        out.nz = n1.z + n2.z + n3.z;
-    }
 
     return out;
 }
@@ -690,33 +648,6 @@ __kernel void Main_RefitTree_LevelX(__global BVHNode *in_BVHNodes, __global BVHN
     }
 }
 
-float3 RotateAxisAngle(float3 axis, float3 v, float theta)
-{
-    float cos_theta = cos(theta);
-    float sin_theta = sin(theta);
-
-    float3 rotated = (v * cos_theta) + (cross(axis, v) * sin_theta) + (axis * dot(axis, v)) * (1 - cos_theta);
-
-    return rotated;
-}
-
-float3 scale3(float3 point, float scale)
-{
-	float3 ret;
-	ret.x = point.x * scale;
-	ret.y = point.y * scale;
-	ret.z = point.z * scale;
-	return ret;
-}
-
-float2 scale2(float2 point, float scale)
-{
-	float2 ret;
-	ret.x = point.x * scale;
-	ret.y = point.y * scale;
-	return ret;
-}
-
 __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float in_Angle, float in_ZFar, int in_Width, int in_Height, __global Ray *inout_Rays, __global float *inout_DepthTexture)
 {
     int pixelx = get_global_id(0);
@@ -786,7 +717,6 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
         ret.normal = normal;
         ret.t = t;
         ret.materialId = tri->materialId;
-        //ret.uv = float2(0, 0);
         return ret;
     }
 		
@@ -866,6 +796,14 @@ Color Tex2D(__global unsigned char *texture, int width, int height, float3 A, fl
 
     float s = ((dot(u, v) * dot(w, v)) - (dot(v, v) * dot(w, u))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
     float t = ((dot(u, v) * dot(w, u)) - (dot(u, u) * dot(w, v))) / ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
+
+    // repeat texture, on
+    tA.x = fmod(tA.x, 1.0f); if (tA.x < 0.0f) { tA.x += 1.0f; }
+    tA.y = fmod(tA.y, 1.0f); if (tA.y < 0.0f) { tA.y += 1.0f; }
+    tB.x = fmod(tB.x, 1.0f); if (tB.x < 0.0f) { tB.x += 1.0f; }
+    tB.y = fmod(tB.y, 1.0f); if (tB.y < 0.0f) { tB.y += 1.0f; }
+    tC.x = fmod(tC.x, 1.0f); if (tC.x < 0.0f) { tC.x += 1.0f; }
+    tC.y = fmod(tC.y, 1.0f); if (tC.y < 0.0f) { tC.y += 1.0f; }
 
     float2 tu = tB - tA;
     float2 tv = tC - tA;
