@@ -166,7 +166,7 @@ namespace Project
 
                 smd.SetAnimation("Anim1");
 
-                //int iMatrixOffset = m_Scene.NumMatrices();
+                int iMatrixOffset = m_Scene.NumMatrices();
                 for (int i = 0; i < mesh.transforms.Count; i++)
                 {
                     int iMatrixId = m_Scene.GenMatrix();
@@ -222,17 +222,17 @@ namespace Project
                         {
                             if (j == 0)
                             {
-                                vertexA.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId1 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight1 = meshVertexA.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexA.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId2 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight2 = meshVertexA.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexA.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexA.matrices[j].matrix_id;
+                                vertexA.m_iMatrixId3 = iMatrixOffset + meshVertexA.matrices[j].matrix_id;
                                 vertexA.m_fWeight3 = meshVertexA.matrices[j].weight;
                             }
                         }
@@ -251,17 +251,17 @@ namespace Project
                         {
                             if (j == 0)
                             {
-                                vertexB.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId1 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight1 = meshVertexB.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexB.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId2 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight2 = meshVertexB.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexB.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexB.matrices[j].matrix_id;
+                                vertexB.m_iMatrixId3 = iMatrixOffset + meshVertexB.matrices[j].matrix_id;
                                 vertexB.m_fWeight3 = meshVertexB.matrices[j].weight;
                             }
                         }
@@ -280,17 +280,17 @@ namespace Project
                         {
                             if (j == 0)
                             {
-                                vertexC.m_iMatrixId1 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId1 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight1 = meshVertexC.matrices[j].weight;
                             }
                             if (j == 1)
                             {
-                                vertexC.m_iMatrixId2 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId2 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight2 = meshVertexC.matrices[j].weight;
                             }
                             if (j == 2)
                             {
-                                vertexC.m_iMatrixId3 = /*iMatrixOffset +*/ meshVertexC.matrices[j].matrix_id;
+                                vertexC.m_iMatrixId3 = iMatrixOffset + meshVertexC.matrices[j].matrix_id;
                                 vertexC.m_fWeight3 = meshVertexC.matrices[j].weight;
                             }
                         }
