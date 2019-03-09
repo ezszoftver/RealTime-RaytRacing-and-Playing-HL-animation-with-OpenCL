@@ -789,16 +789,6 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
         //ret.uv = float2(0, 0);
         return ret;
     }
-	if (c1 <= 0 && c2 <= 0 && c3 <= 0) 
-    {
-        ret.isCollision = 1;
-        ret.pos = ip;
-        ret.normal = normal;;
-        ret.t = t;
-        ret.materialId = tri->materialId;
-        //ret.uv = float2(0, 0);
-        return ret;
-    }
 		
 	return ret;
 }
