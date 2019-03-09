@@ -269,7 +269,6 @@ namespace Project
             for (int i = 0; i < reference_skeleton.bones.Count(); i++)
             {
                 Matrix4 invert = GetReferenceMatrix(i);
-                invert.Invert();
                 mesh.inverse_transforms_reference[i] = invert;
             }
 
@@ -286,6 +285,8 @@ namespace Project
                     {
                         inverseTransform += mesh.inverse_transforms_reference[vertex.matrices[i].matrix_id] * vertex.matrices[i].weight;
                     }
+
+                    inverseTransform.Invert();
 
                     // vertex
                     vertex.vertex = new Vector3(new Vector4(vertex.vertex, 1.0f) * inverseTransform);

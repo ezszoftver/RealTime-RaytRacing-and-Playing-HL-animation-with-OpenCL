@@ -155,10 +155,13 @@ namespace Project
                 mesh = new Mesh();
 
                 mtxMutex.WaitOne();
+
+                // HL1
                 //smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
                 //smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
 
-                smd.LoadReference(@strDirectory, @"LOD_1.smd", mesh);
+                // HL2
+                smd.LoadReference(@strDirectory, @"Antlion_guard_reference.smd", mesh);
                 smd.AddAnimation(@strDirectory, @"Antlion_idle.smd", "Anim1", 30.0f);
 
                 smd.SetAnimation("Anim1");

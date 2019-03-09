@@ -548,7 +548,6 @@ float2 scale2(float2 point, float scale)
 	return ret;
 }
 
-
 Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
     Vertex out;
@@ -563,11 +562,30 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
     out.weight2     = in.weight2;
     out.weight3     = in.weight3;
 
-    float4 v = Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f));
-    out.vx = v.x;
-    out.vy = v.y;
-    out.vz = v.z;
-    
+    if (1 == in.numMatrices)
+    {
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        out.vx = v1.x;
+        out.vy = v1.y;
+        out.vz = v1.z;
+    }
+    else if (2 == in.numMatrices)
+    {
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        float3 v2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        out.vx = v1.x + v2.x;
+        out.vy = v1.y + v2.y;
+        out.vz = v1.z + v2.z;
+    }
+    else if (3 == in.numMatrices)
+    {
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        float3 v2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        float3 v3 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId3], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight3);
+        out.vx = v1.x + v2.x + v3.x;
+        out.vy = v1.y + v2.y + v3.y;
+        out.vz = v1.z + v2.z + v3.z;
+    }
 
     return out;
 }
