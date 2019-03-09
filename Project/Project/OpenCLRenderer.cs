@@ -111,8 +111,8 @@ namespace OpenCLRenderer
     struct Material
     {
         public Texture m_DiffuseTexture;
-        //public Texture m_SpecularTexture;
-        //public Texture m_NormalTexture;
+        public Texture m_SpecularTexture;
+        public Texture m_NormalTexture;
     }
 
     struct BVHObject
