@@ -195,8 +195,13 @@ namespace OpenCLRenderer
                         //string strText = m_Program.GetBuildLog(m_Device);
                         //MessageBox.Show(strText, "Exception");
                         //Application.Current.Shutdown();
+
+                        MessageBox.Show("FAILED: Device=" + m_Device.Name);
+
                         continue;
                     }
+
+                    MessageBox.Show("SUCCESS: Device=" + m_Device.Name);
 
                     // VertexShader
                     kernelVertexShader = m_Program.CreateKernel("Main_VertexShader");
