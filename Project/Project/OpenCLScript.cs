@@ -275,7 +275,7 @@ Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
 
     det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
-    det = 1.0 / det;
+    det = 1.0f / det;
 
     float invOut[16];
     for (i = 0; i < 16; i++)
@@ -716,11 +716,11 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
     float3 c = ToFloat3(tri->c.vx, tri->c.vy, tri->c.vz);
     float3 normal = ToFloat3(tri->normalx, tri->normaly, tri->normalz);
     float cost = dot(ToFloat3(ray->dirx, ray->diry, ray->dirz), normal);
-	if (fabs(cost) <= 0.0001) 
+	if (fabs(cost) <= 0.0001f) 
 		return ret;
     
 	float t = dot(a - ToFloat3(ray->posx, ray->posy, ray->posz), normal) / cost;
-	if(t < 0.0001) 
+	if(t < 0.0001f) 
 		return ret;
     
 	float3 ip = Ray_GetPoint(ray, t);
@@ -728,7 +728,7 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
 	float c1 = dot(cross(b - a, ip - a), normal);
 	float c2 = dot(cross(c - b, ip - b), normal);
 	float c3 = dot(cross(a - c, ip - c), normal);
-	if (c1 >= 0 && c2 >= 0 && c3 >= 0) 
+	if (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f) 
     {
 		ret.isCollision = 1;
         ret.pos = ip;
@@ -754,9 +754,9 @@ int Intersect_RayBBox(Ray *ray, BBox *bbox)
     rt.z = bbox->maxz;
 
     Vector3 dirfrac;
-    dirfrac.x = 1.0 / ray->dirx;
-    dirfrac.y = 1.0 / ray->diry;
-    dirfrac.z = 1.0 / ray->dirz;
+    dirfrac.x = 1.0f / ray->dirx;
+    dirfrac.y = 1.0f / ray->diry;
+    dirfrac.z = 1.0f / ray->dirz;
     
     float t1 = (lb.x - ray->posx) * dirfrac.x;
     float t2 = (rt.x - ray->posx) * dirfrac.x;
@@ -769,7 +769,7 @@ int Intersect_RayBBox(Ray *ray, BBox *bbox)
     float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
     
     // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
-    if (tmax < 0)
+    if (tmax < 0.0f)
     {
         return 0;
     }
