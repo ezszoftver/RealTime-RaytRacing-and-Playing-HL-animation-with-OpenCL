@@ -192,9 +192,9 @@ namespace OpenCLRenderer
                     {
                         e.ToString();
 
-                        //string strText = m_Program.GetBuildLog(m_Device);
-                        //MessageBox.Show(strText, "Exception");
-                        //Application.Current.Shutdown();
+                        string strText = m_Program.GetBuildLog(m_Device);
+                        MessageBox.Show(strText, "Exception");
+                        Application.Current.Shutdown();
 
                         MessageBox.Show("FAILED: Device=" + m_Device.Name);
 
