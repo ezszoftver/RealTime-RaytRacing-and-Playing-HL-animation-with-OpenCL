@@ -155,8 +155,10 @@ namespace OpenCLRenderer
             ray.length = 0;
         }
 
-        public void CreateDevice()
+        public List<string> GetDevices()
         {
+            List<string> ret = new List<string>();
+
             ComputePlatform[] platforms = ComputePlatform.Platforms.ToArray();
 
             foreach (ComputePlatform platform in platforms)
@@ -166,7 +168,7 @@ namespace OpenCLRenderer
                 ComputeContext newContext = null;
                 try
                 {
-                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
+                    newContext = new ComputeContext(ComputeDeviceTypes.All, properties, null, IntPtr.Zero);
                 }
                 catch (Exception ex)
                 {
@@ -187,6 +189,67 @@ namespace OpenCLRenderer
                     try
                     {
                         m_Program.Build(null, null, null, IntPtr.Zero);
+
+                        ret.Add(m_Device.Name);
+                    }
+                    catch (Exception e)
+                    {
+                        e.ToString();
+                        continue;
+                    }
+                    finally
+                    {
+                        m_Program.Dispose();
+                        m_Program = null;
+                        cmdQueue.Dispose();
+                        cmdQueue = null;
+                    }
+                }
+
+                newContext.Dispose();
+                newContext = null;
+            }
+
+            return ret;
+        }
+
+        public void CreateDevice(string strDeviceName)
+        {
+            ComputePlatform[] platforms = ComputePlatform.Platforms.ToArray();
+
+            foreach (ComputePlatform platform in platforms)
+            {
+                ComputeContextPropertyList properties = new ComputeContextPropertyList(platform);
+
+                ComputeContext newContext = null;
+                try
+                {
+                    newContext = new ComputeContext(ComputeDeviceTypes.All, properties, null, IntPtr.Zero);
+                }
+                catch (Exception ex)
+                {
+                    ex.ToString();
+                    continue;
+                }
+
+                ComputeDevice[] devices = newContext.Devices.ToArray();
+
+                foreach (ComputeDevice device in devices)
+                {
+                    m_Context = newContext;
+                    m_Device = device;
+
+                    if (m_Device.Name != strDeviceName)
+                    {
+                        continue;
+                    }
+
+                    cmdQueue = new ComputeCommandQueue(m_Context, m_Device, ComputeCommandQueueFlags.None);
+                    m_Program = new ComputeProgram(m_Context, OpenCLScript.GetText());
+
+                    try
+                    {
+                        m_Program.Build(null, null, null, IntPtr.Zero);
                     }
                     catch (Exception e)
                     {
@@ -194,14 +257,8 @@ namespace OpenCLRenderer
 
                         string strText = m_Program.GetBuildLog(m_Device);
                         MessageBox.Show(strText, "Exception");
-                        //Application.Current.Shutdown();
-
-                        MessageBox.Show("FAILED: Device=" + m_Device.Name);
-
                         continue;
                     }
-
-                    MessageBox.Show("SUCCESS: Device=" + m_Device.Name);
 
                     // VertexShader
                     kernelVertexShader = m_Program.CreateKernel("Main_VertexShader");
@@ -222,10 +279,8 @@ namespace OpenCLRenderer
                     return;
                 }
 
+                newContext.Dispose();
             }
-
-            MessageBox.Show("Scene: Not find OpenCL GPU device!", "Exception");
-            Application.Current.Shutdown();
         }
 
         public int NumMatrices()
@@ -1251,13 +1306,13 @@ namespace OpenCLRenderer
             // depth
             if (null != clInputOutput_DepthTextureBuffer) { clInputOutput_DepthTextureBuffer.Dispose(); clInputOutput_DepthTextureBuffer = null; }
 
-            kernelVertexShader.Dispose();
-            KernelRefitTree_LevelX.Dispose();
-            KernelCameraRays.Dispose();
-            KernelRayShader.Dispose();
-            cmdQueue.Dispose();
-            m_Program.Dispose();
-            m_Context.Dispose();
+            if (null != kernelVertexShader    ) { kernelVertexShader.Dispose(); kernelVertexShader = null; }
+            if (null != KernelRefitTree_LevelX) { KernelRefitTree_LevelX.Dispose(); KernelRefitTree_LevelX = null; }
+            if (null != KernelCameraRays      ) { KernelCameraRays      .Dispose(); KernelCameraRays       = null; }
+            if (null != KernelRayShader       ) { KernelRayShader       .Dispose(); KernelRayShader        = null; }
+            if (null != cmdQueue              ) { cmdQueue              .Dispose(); cmdQueue               = null; }
+            if (null != m_Program             ) { m_Program             .Dispose(); m_Program              = null; }
+            if (null != m_Context             ) { m_Context.Dispose();              m_Context              = null; }
 
             m_mtxMutex.ReleaseMutex();
         }

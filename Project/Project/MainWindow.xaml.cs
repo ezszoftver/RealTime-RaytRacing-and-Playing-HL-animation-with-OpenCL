@@ -38,7 +38,39 @@ namespace Project
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             m_Scene = new OpenCLRenderer.Scene();
-            m_Scene.CreateDevice();
+            List<string> listDevices = m_Scene.GetDevices();
+            m_Scene.Dispose();
+            m_Scene = null;
+
+            ContextMenu contextMenu = new ContextMenu();
+            foreach (string strDevice in listDevices)
+            {
+                MenuItem item = new MenuItem();
+                item.Header = strDevice;
+                item.Click += Item_Click;
+
+                contextMenu.Items.Add(item);
+            }
+            ContextMenu = contextMenu;
+        }
+
+        private void Item_Click(object sender, RoutedEventArgs e)
+        {
+            if (null != m_Timer)
+            {
+                m_Timer.Stop();
+                m_Timer = null;
+            }
+
+            if (null != m_Scene)
+            {
+                m_Scene.Dispose();
+                m_Scene = null;
+            }
+
+            string strDeviceName = (sender as MenuItem).Header.ToString();
+            m_Scene = new OpenCLRenderer.Scene();
+            m_Scene.CreateDevice(strDeviceName);
 
             Mutex mtxMutex = new Mutex();
 
@@ -314,6 +346,8 @@ namespace Project
             
             m_Scene.Commit();
 
+            Image_SizeChanged(null, null);
+
             m_Timer = new DispatcherTimer();
             m_Timer.Tick += Timer_Tick;
             m_Timer.Interval = TimeSpan.FromMilliseconds(0);
@@ -395,7 +429,10 @@ namespace Project
             int iWidth = (int)image.ActualWidth;
             int iHeight = (int)image.ActualHeight;
 
+            if (iWidth == 0 || iHeight == 0) { return; }
             m_Scene.Resize(iWidth, iHeight);
         }
+
+        
     }
 }
