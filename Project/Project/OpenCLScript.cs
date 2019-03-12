@@ -955,7 +955,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
         stack[top] = rootId;
         top++;
     
-        while(top > 0)
+        for(;true;)
         {
             top--;
             if (top < 0) { return; }
