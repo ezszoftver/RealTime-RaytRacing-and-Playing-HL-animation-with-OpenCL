@@ -949,32 +949,32 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     {
         int rootId = in_BeginObjects[i];
      
-        int stack[100];
-        int top = -1;
-
-        top++;
+        int stack[10000];
+        int top = 0;
+    
         stack[top] = rootId;
-
-        while(top != -1)
+        top++;
+    
+        while(top > 0)
         {
             BVHNode temp_node = in_BVHNodes[stack[top]];
             top--;
-
+    
             if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
             {
                 // haromszog-ray utkozesvizsgalat
                 Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
-
+    
                 if (hit.isCollision == 1 && hit.t < inout_DepthTexture[id])
                 {
                     inout_DepthTexture[id] = hit.t;
-
+    
                     Material material = materials[hit.materialId];
                     unsigned int offset = material.diffuseTexture.offset;
                     int width = material.diffuseTexture.width;
                     int height = material.diffuseTexture.height;
                     __global unsigned char *texture = &(textureDatas[offset]);
-
+    
                     Vector3 A = ToVector3(temp_node.triangle.a.vx, temp_node.triangle.a.vy, temp_node.triangle.a.vz);
                     Vector3 B = ToVector3(temp_node.triangle.b.vx, temp_node.triangle.b.vy, temp_node.triangle.b.vz);
                     Vector3 C = ToVector3(temp_node.triangle.c.vx, temp_node.triangle.c.vy, temp_node.triangle.c.vz);
@@ -982,15 +982,29 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                     Vector2 tA = ToVector2(temp_node.triangle.a.tx, temp_node.triangle.a.ty);
                     Vector2 tB = ToVector2(temp_node.triangle.b.tx, temp_node.triangle.b.ty);
                     Vector2 tC = ToVector2(temp_node.triangle.c.tx, temp_node.triangle.c.ty);
-
+    
                     Color color = Tex2D(texture, width, height, A, B, C, tA, tB, tC, P);
                     WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), color);
                 }
             }
-            else if (1 == Intersect_RayBBox(&ray, &(temp_node.bbox))) // ha box
+            
+            if (temp_node.left != -1) 
             {
-                if (temp_node.left != -1) { top++; stack[top] = temp_node.left; }
-                if (temp_node.right != -1) { top++; stack[top] = temp_node.right; }
+                BVHNode node = in_BVHNodes[temp_node.left];
+                if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                {
+                    stack[top] = temp_node.left; 
+                    top++;
+                }
+            }
+            if (temp_node.right != -1) 
+            {
+                BVHNode node = in_BVHNodes[temp_node.right];
+                if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                {
+                    stack[top] = temp_node.right;
+                    top++;
+                }
             }
         }
     }
