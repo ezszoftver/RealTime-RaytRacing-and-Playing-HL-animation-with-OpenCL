@@ -958,6 +958,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
         while(top > 0)
         {
             top--;
+            if (top < 0) { return; }
             BVHNode temp_node = in_BVHNodes[stack[top]];
     
             if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
