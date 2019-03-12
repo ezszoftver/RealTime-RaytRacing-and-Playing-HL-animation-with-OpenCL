@@ -949,7 +949,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     {
         int rootId = in_BeginObjects[i];
      
-        int stack[10000];
+        int stack[100];
         int top = 0;
     
         stack[top] = rootId;
@@ -957,8 +957,8 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     
         while(top > 0)
         {
-            BVHNode temp_node = in_BVHNodes[stack[top]];
             top--;
+            BVHNode temp_node = in_BVHNodes[stack[top]];
     
             if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
             {
