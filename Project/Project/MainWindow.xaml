@@ -7,12 +7,12 @@
         xmlns:local="clr-namespace:Project"
         mc:Ignorable="d"
         Width="640" Height="480"
-        MinWidth="128" MinHeight="128"
+        MinWidth="640" MinHeight="480"
         Title="" 
         WindowStartupLocation="CenterScreen"
-        Loaded="Window_Loaded"
         Closing="Window_Closing">
-    <Grid>
+    <Grid Background="AliceBlue">
+        <Label x:Name="labelMessage" Content="Please Right-Click, to choose OpenCL Device" FontSize="20" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
         <Image x:Name="image" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" SizeChanged="Image_SizeChanged">
             <Image.LayoutTransform>
                 <TransformGroup>

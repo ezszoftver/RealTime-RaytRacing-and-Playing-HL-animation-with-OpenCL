@@ -33,10 +33,7 @@ namespace Project
         public MainWindow()
         {
             InitializeComponent();
-        }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
             m_Scene = new OpenCLRenderer.Scene();
             List<string> listDevices = m_Scene.GetDevices();
             m_Scene.Dispose();
@@ -56,6 +53,8 @@ namespace Project
 
         private void Item_Click(object sender, RoutedEventArgs e)
         {
+            labelMessage.IsEnabled = false;
+
             if (null != m_Timer)
             {
                 m_Timer.Stop();
