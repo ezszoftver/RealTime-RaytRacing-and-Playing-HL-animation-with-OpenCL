@@ -8,6 +8,18 @@ namespace OpenCLRenderer
 {
     public static class OpenCLScript
     {
+        static string m_strVertexShader = @"";
+        public static void SetVertexShader(string @strVertexShader)
+        {
+            m_strVertexShader = strVertexShader;
+        }
+
+        static string m_strRayShader = @"";
+        public static void SetRayShader(string @strRayShader)
+        {
+            m_strRayShader = strRayShader;
+        }
+
         public static string GetText()
         {
             return
@@ -619,47 +631,7 @@ Vector2 scale2(Vector2 point, float scale)
 	return ret;
 }
 
-Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
-{
-    Vertex out;
-    
-    out.tx          = in.tx;
-    out.ty          = in.ty;
-    out.numMatrices = in.numMatrices;
-    out.matrixId1   = in.matrixId1;
-    out.matrixId2   = in.matrixId2;
-    out.matrixId3   = in.matrixId3;
-    out.weight1     = in.weight1;
-    out.weight2     = in.weight2;
-    out.weight3     = in.weight3;
-
-    if (1 == in.numMatrices)
-    {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
-        out.vx = v1.x;
-        out.vy = v1.y;
-        out.vz = v1.z;
-    }
-    else if (2 == in.numMatrices)
-    {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
-        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
-        out.vx = v1.x + v2.x;
-        out.vy = v1.y + v2.y;
-        out.vz = v1.z + v2.z;
-    }
-    else if (3 == in.numMatrices)
-    {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
-        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
-        Vector3 v3 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId3], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight3);
-        out.vx = v1.x + v2.x + v3.x;
-        out.vy = v1.y + v2.y + v3.y;
-        out.vz = v1.z + v2.z + v3.z;
-    }
-
-    return out;
-}
+" + @m_strVertexShader + @"
 
 Vector3 Cross(Vector3 a, Vector3 b)
 {
@@ -945,17 +917,9 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     return ret;
 }
 
-Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
-{
-    Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
-    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+" + @m_strRayShader + @"
 
-    Ray nextRay;
-    nextRay.length = -1.0f;
-    return nextRay;
-}
-
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, float red, float green, float blue, float alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -965,10 +929,10 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
 
     // clear
     Color background;
-    background.red = 127;
-    background.green = 127;
-    background.blue = 255;
-    background.alpha = 255;
+    background.red = red;
+    background.green = green;
+    background.blue = blue;
+    background.alpha = alpha;
     WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), background);
 
     for(;true;)
@@ -1004,23 +968,6 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                         inout_DepthTexture[id] = hit.t;
         
                         bestHit = hit;
-
-                        //Material material = materials[hit.materialId];
-                        //unsigned int offset = material.diffuseTexture.offset;
-                        //int width = material.diffuseTexture.width;
-                        //int height = material.diffuseTexture.height;
-                        //__global unsigned char *texture = &(textureDatas[offset]);
-                        //
-                        //Vector3 A = ToVector3(temp_node.triangle.a.vx, temp_node.triangle.a.vy, temp_node.triangle.a.vz);
-                        //Vector3 B = ToVector3(temp_node.triangle.b.vx, temp_node.triangle.b.vy, temp_node.triangle.b.vz);
-                        //Vector3 C = ToVector3(temp_node.triangle.c.vx, temp_node.triangle.c.vy, temp_node.triangle.c.vz);
-                        //Vector3 P = hit.pos;
-                        //Vector2 tA = ToVector2(temp_node.triangle.a.tx, temp_node.triangle.a.ty);
-                        //Vector2 tB = ToVector2(temp_node.triangle.b.tx, temp_node.triangle.b.ty);
-                        //Vector2 tC = ToVector2(temp_node.triangle.c.tx, temp_node.triangle.c.ty);
-                        //
-                        //Color color = Tex2D(texture, width, height, A, B, C, tA, tB, tC, P);
-                        //WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), color);
                     }
                 }
                 

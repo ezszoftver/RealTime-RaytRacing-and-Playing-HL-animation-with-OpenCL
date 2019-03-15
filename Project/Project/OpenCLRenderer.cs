@@ -186,20 +186,21 @@ namespace OpenCLRenderer
                     cmdQueue = new ComputeCommandQueue(m_Context, m_Device, ComputeCommandQueueFlags.None);
                     m_Program = new ComputeProgram(m_Context, OpenCLScript.GetText());
 
-                    try
-                    {
-                        m_Program.Build(null, null, null, IntPtr.Zero);
-
-                        ret.Add(m_Device.Name);
-                    }
-                    catch (Exception e)
-                    {
-                        e.ToString();
-                        string strText = m_Program.GetBuildLog(m_Device);
-                        MessageBox.Show(strText, "Exception");
-                        continue;
-                    }
-                    finally
+                    ret.Add(m_Device.Name);
+                    //try
+                    //{
+                    //    m_Program.Build(null, null, null, IntPtr.Zero);
+                    //
+                    //    ret.Add(m_Device.Name);
+                    //}
+                    //catch (Exception e)
+                    //{
+                    //    e.ToString();
+                    //    string strText = m_Program.GetBuildLog(m_Device);
+                    //    MessageBox.Show(strText, "Exception");
+                    //    continue;
+                    //}
+                    //finally
                     {
                         m_Program.Dispose();
                         m_Program = null;
@@ -215,7 +216,7 @@ namespace OpenCLRenderer
             return ret;
         }
 
-        public void CreateDevice(string strDeviceName)
+        public void CreateDevice(string strDeviceName, string @strVertexShader, string @strRayShader)
         {
             ComputePlatform[] platforms = ComputePlatform.Platforms.ToArray();
 
@@ -246,6 +247,9 @@ namespace OpenCLRenderer
                         continue;
                     }
 
+                    OpenCLScript.SetVertexShader(@strVertexShader);
+                    OpenCLScript.SetRayShader(@strRayShader);
+
                     cmdQueue = new ComputeCommandQueue(m_Context, m_Device, ComputeCommandQueueFlags.None);
                     m_Program = new ComputeProgram(m_Context, OpenCLScript.GetText());
 
@@ -259,7 +263,8 @@ namespace OpenCLRenderer
 
                         string strText = m_Program.GetBuildLog(m_Device);
                         MessageBox.Show(strText, "Exception");
-                        continue;
+
+                        Application.Current.Shutdown();
                     }
 
                     // VertexShader
@@ -1146,7 +1151,7 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void RunRayShader(float fRed, float fGreen, float fBlue, float fAlpha)
+        public void RunRayShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
         {
             m_mtxMutex.WaitOne();
 
@@ -1157,10 +1162,10 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(4, clInputOutput_DepthTextureBuffer);
             KernelRayShader.SetValueArgument<int>(5, m_iWidth);
             KernelRayShader.SetValueArgument<int>(6, m_iHeight);
-            KernelRayShader.SetValueArgument<float>(7, fRed);
-            KernelRayShader.SetValueArgument<float>(8, fGreen);
-            KernelRayShader.SetValueArgument<float>(9, fBlue);
-            KernelRayShader.SetValueArgument<float>(10, fAlpha);
+            KernelRayShader.SetValueArgument<byte>(7, iRed);
+            KernelRayShader.SetValueArgument<byte>(8, iGreen);
+            KernelRayShader.SetValueArgument<byte>(9, iBlue);
+            KernelRayShader.SetValueArgument<byte>(10, iAlpha);
             KernelRayShader.SetMemoryArgument(11, clInput_Materials);
             KernelRayShader.SetMemoryArgument(12, clInput_TexturesData);
             KernelRayShader.SetMemoryArgument(13, clOutput_TextureBuffer);

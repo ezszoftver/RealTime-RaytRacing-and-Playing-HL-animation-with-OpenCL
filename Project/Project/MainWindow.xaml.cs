@@ -69,7 +69,67 @@ namespace Project
 
             string strDeviceName = (sender as MenuItem).Header.ToString();
             m_Scene = new OpenCLRenderer.Scene();
-            m_Scene.CreateDevice(strDeviceName);
+
+            string strVertexShader = 
+@"
+Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
+{
+    Vertex out;
+    
+    out.tx          = in.tx;
+    out.ty          = in.ty;
+    out.numMatrices = in.numMatrices;
+    out.matrixId1   = in.matrixId1;
+    out.matrixId2   = in.matrixId2;
+    out.matrixId3   = in.matrixId3;
+    out.weight1     = in.weight1;
+    out.weight2     = in.weight2;
+    out.weight3     = in.weight3;
+
+    if (1 == in.numMatrices)
+    {
+        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        out.vx = v1.x;
+        out.vy = v1.y;
+        out.vz = v1.z;
+    }
+    else if (2 == in.numMatrices)
+    {
+        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        out.vx = v1.x + v2.x;
+        out.vy = v1.y + v2.y;
+        out.vz = v1.z + v2.z;
+    }
+    else if (3 == in.numMatrices)
+    {
+        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        Vector3 v3 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId3], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight3);
+        out.vx = v1.x + v2.x + v3.x;
+        out.vy = v1.y + v2.y + v3.y;
+        out.vz = v1.z + v2.z + v3.z;
+    }
+
+    return out;
+}
+";
+
+            string @strRayShader =
+@"
+Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
+{
+    Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
+    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+
+    // nincs tobb sugar inditas (ez a funkcio meg nincs tesztelve)
+    Ray nextRay;
+    nextRay.length = -1.0f;
+    return nextRay;
+}
+";
+
+            m_Scene.CreateDevice(strDeviceName, @strVertexShader, @strRayShader);
 
             Mutex mtxMutex = new Mutex();
 
@@ -389,7 +449,7 @@ namespace Project
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
             m_Scene.SetCamera(new Vector3(-100, 100, -100), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
-            m_Scene.RunRayShader(0.5f, 0.5f, 1.0f, 1.0f);
+            m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
         }
