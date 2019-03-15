@@ -195,6 +195,8 @@ namespace OpenCLRenderer
                     catch (Exception e)
                     {
                         e.ToString();
+                        string strText = m_Program.GetBuildLog(m_Device);
+                        MessageBox.Show(strText, "Exception");
                         continue;
                     }
                     finally

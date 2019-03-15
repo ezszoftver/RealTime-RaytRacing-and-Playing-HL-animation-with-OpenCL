@@ -375,6 +375,7 @@ typedef struct
     Vector3 normal;
     float t;
     int materialId;
+    Vector2 uv;
     int isCollision;
 }
 Hit;
@@ -805,30 +806,58 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
     Hit ret;
     ret.isCollision = 0;
 
-    Vector3 a = ToVector3(tri->a.vx, tri->a.vy, tri->a.vz);
-    Vector3 b = ToVector3(tri->b.vx, tri->b.vy, tri->b.vz);
-    Vector3 c = ToVector3(tri->c.vx, tri->c.vy, tri->c.vz);
+    Vector3 A = ToVector3(tri->a.vx, tri->a.vy, tri->a.vz);
+    Vector3 B = ToVector3(tri->b.vx, tri->b.vy, tri->b.vz);
+    Vector3 C = ToVector3(tri->c.vx, tri->c.vy, tri->c.vz);
+    Vector2 tA = ToVector2(tri->a.tx, tri->a.ty);
+    Vector2 tB = ToVector2(tri->b.tx, tri->b.ty);
+    Vector2 tC = ToVector2(tri->c.tx, tri->c.ty);
     Vector3 normal = ToVector3(tri->normalx, tri->normaly, tri->normalz);
+
     float cost = Vector3_Dot(ToVector3(ray->dirx, ray->diry, ray->dirz), normal);
 	if (fabs(cost) <= 0.0001f) 
 		return ret;
     
-	float t = Vector3_Dot(Vector3_Sub(a, ToVector3(ray->posx, ray->posy, ray->posz)), normal) / cost;
+	float t = Vector3_Dot(Vector3_Sub(A, ToVector3(ray->posx, ray->posy, ray->posz)), normal) / cost;
 	if(t < 0.0001f) 
 		return ret;
     
-	Vector3 ip = Ray_GetPoint(ray, t);
+	Vector3 P = Ray_GetPoint(ray, t);
     
-	float c1 = Vector3_Dot(Cross(Vector3_Sub(b, a), Vector3_Sub(ip, a)), normal);
-	float c2 = Vector3_Dot(Cross(Vector3_Sub(c, b), Vector3_Sub(ip, b)), normal);
-	float c3 = Vector3_Dot(Cross(Vector3_Sub(a, c), Vector3_Sub(ip, c)), normal);
+	float c1 = Vector3_Dot(Cross(Vector3_Sub(B, A), Vector3_Sub(P, A)), normal);
+	float c2 = Vector3_Dot(Cross(Vector3_Sub(C, B), Vector3_Sub(P, B)), normal);
+	float c3 = Vector3_Dot(Cross(Vector3_Sub(A, C), Vector3_Sub(P, C)), normal);
 	if (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f) 
     {
 		ret.isCollision = 1;
-        ret.pos = ip;
+        ret.pos = P;
         ret.normal = normal;
         ret.t = t;
         ret.materialId = tri->materialId;
+
+        // texture coords
+        Vector3 u = Vector3_Sub(B, A);
+        Vector3 v = Vector3_Sub(C, A);
+        Vector3 w = Vector3_Sub(P, A);
+        float denom = ((Vector3_Dot(u, v) * Vector3_Dot(u, v)) - (Vector3_Dot(u, u) * Vector3_Dot(v, v)));
+        float t = ((Vector3_Dot(u, v) * Vector3_Dot(w, u)) - (Vector3_Dot(u, u) * Vector3_Dot(w, v))) / denom;
+        float s = ((Vector3_Dot(u, v) * Vector3_Dot(w, v)) - (Vector3_Dot(v, v) * Vector3_Dot(w, u))) / denom;
+
+        // repeat texture, on
+        tA.x = fmod(tA.x, 1.0f); if (tA.x < 0.0f) { tA.x += 1.0f; }
+        tA.y = fmod(tA.y, 1.0f); if (tA.y < 0.0f) { tA.y += 1.0f; }
+        tB.x = fmod(tB.x, 1.0f); if (tB.x < 0.0f) { tB.x += 1.0f; }
+        tB.y = fmod(tB.y, 1.0f); if (tB.y < 0.0f) { tB.y += 1.0f; }
+        tC.x = fmod(tC.x, 1.0f); if (tC.x < 0.0f) { tC.x += 1.0f; }
+        tC.y = fmod(tC.y, 1.0f); if (tC.y < 0.0f) { tC.y += 1.0f; }
+
+        Vector2 tu = Vector2_Sub(tB, tA);
+        Vector2 tv = Vector2_Sub(tC, tA);
+
+        Vector2 pixel = Vector2_Add(Vector2_Add(tA, scale2(tu, s)), scale2(tv, t));
+        ret.uv.x = pixel.x;
+        ret.uv.y = pixel.y;
+
         return ret;
     }
 		
@@ -900,33 +929,30 @@ Color ReadTexture(__global unsigned char *texture, int width, int height, Vector
     return color;
 }
 
-Color Tex2D(__global unsigned char *texture, int width, int height, Vector3 A, Vector3 B, Vector3 C, Vector2 tA, Vector2 tB, Vector2 tC, Vector3 P)
+Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, Vector2 uv)
 {
-    Vector3 u = Vector3_Sub(B, A);
-    Vector3 v = Vector3_Sub(C, A);
-    Vector3 w = Vector3_Sub(P, A);
+    Material material = materials[materialId];
+    unsigned int offset = material.diffuseTexture.offset;
+    int width = material.diffuseTexture.width;
+    int height = material.diffuseTexture.height;
+    __global unsigned char *texture = &(textureDatas[offset]);
 
-    float t = ((Vector3_Dot(u, v) * Vector3_Dot(w, u)) - (Vector3_Dot(u, u) * Vector3_Dot(w, v))) / ((Vector3_Dot(u, v) * Vector3_Dot(u, v)) - (Vector3_Dot(u, u) * Vector3_Dot(v, v)));
-    float s = ((Vector3_Dot(u, v) * Vector3_Dot(w, v)) - (Vector3_Dot(v, v) * Vector3_Dot(w, u))) / ((Vector3_Dot(u, v) * Vector3_Dot(u, v)) - (Vector3_Dot(u, u) * Vector3_Dot(v, v)));
-
-    // repeat texture, on
-    tA.x = fmod(tA.x, 1.0f); if (tA.x < 0.0f) { tA.x += 1.0f; }
-    tA.y = fmod(tA.y, 1.0f); if (tA.y < 0.0f) { tA.y += 1.0f; }
-    tB.x = fmod(tB.x, 1.0f); if (tB.x < 0.0f) { tB.x += 1.0f; }
-    tB.y = fmod(tB.y, 1.0f); if (tB.y < 0.0f) { tB.y += 1.0f; }
-    tC.x = fmod(tC.x, 1.0f); if (tC.x < 0.0f) { tC.x += 1.0f; }
-    tC.y = fmod(tC.y, 1.0f); if (tC.y < 0.0f) { tC.y += 1.0f; }
-
-    Vector2 tu = Vector2_Sub(tB, tA);
-    Vector2 tv = Vector2_Sub(tC, tA);
-
-    Vector2 pixel = Vector2_Add(Vector2_Add(tA, scale2(tu, s)), scale2(tv, t));
-
-    pixel.x = ((float)pixel.x * (float)width);
-    pixel.y = ((float)pixel.y * (float)height);
+    Vector2 pixel;
+    pixel.x = ((float)uv.x * (float)width);
+    pixel.y = ((float)uv.y * (float)height);
 
     Color ret = ReadTexture(texture, width, height, pixel);
     return ret;
+}
+
+Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
+{
+    Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
+    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+
+    Ray nextRay;
+    nextRay.length = -1.0f;
+    return nextRay;
 }
 
 __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, float red, float green, float blue, float alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
@@ -945,68 +971,91 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     background.alpha = 255;
     WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), background);
 
-    for (int i = 0; i < in_NumBeginObjects; i++)
+    for(;true;)
     {
-        int rootId = in_BeginObjects[i];
-     
-        int stack[100];
-        int top = 0;
-    
-        stack[top] = rootId;
-        top++;
-    
-        for(;true;)
+        Hit bestHit;
+        bestHit.isCollision = 0;
+        
+        int isSearching = 1;
+
+        for (int i = 0; i < in_NumBeginObjects; i++)
         {
-            top--;
-            if (top < 0) { return; }
-            BVHNode temp_node = in_BVHNodes[stack[top]];
-    
-            if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
+            int rootId = in_BeginObjects[i];
+         
+            int stack[100];
+            int top = 0;
+        
+            stack[top] = rootId;
+            top++;
+        
+            for(;isSearching == 1;)
             {
-                // haromszog-ray utkozesvizsgalat
-                Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
-    
-                if (hit.isCollision == 1 && hit.t < inout_DepthTexture[id])
+                top--;
+                if (top < 0) { isSearching = 0; continue; }
+                BVHNode temp_node = in_BVHNodes[stack[top]];
+        
+                if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
                 {
-                    inout_DepthTexture[id] = hit.t;
-    
-                    Material material = materials[hit.materialId];
-                    unsigned int offset = material.diffuseTexture.offset;
-                    int width = material.diffuseTexture.width;
-                    int height = material.diffuseTexture.height;
-                    __global unsigned char *texture = &(textureDatas[offset]);
-    
-                    Vector3 A = ToVector3(temp_node.triangle.a.vx, temp_node.triangle.a.vy, temp_node.triangle.a.vz);
-                    Vector3 B = ToVector3(temp_node.triangle.b.vx, temp_node.triangle.b.vy, temp_node.triangle.b.vz);
-                    Vector3 C = ToVector3(temp_node.triangle.c.vx, temp_node.triangle.c.vy, temp_node.triangle.c.vz);
-                    Vector3 P = hit.pos;
-                    Vector2 tA = ToVector2(temp_node.triangle.a.tx, temp_node.triangle.a.ty);
-                    Vector2 tB = ToVector2(temp_node.triangle.b.tx, temp_node.triangle.b.ty);
-                    Vector2 tC = ToVector2(temp_node.triangle.c.tx, temp_node.triangle.c.ty);
-    
-                    Color color = Tex2D(texture, width, height, A, B, C, tA, tB, tC, P);
-                    WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+                    // haromszog-ray utkozesvizsgalat
+                    Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
+        
+                    if (hit.isCollision == 1 && hit.t < inout_DepthTexture[id])
+                    {
+                        inout_DepthTexture[id] = hit.t;
+        
+                        bestHit = hit;
+
+                        //Material material = materials[hit.materialId];
+                        //unsigned int offset = material.diffuseTexture.offset;
+                        //int width = material.diffuseTexture.width;
+                        //int height = material.diffuseTexture.height;
+                        //__global unsigned char *texture = &(textureDatas[offset]);
+                        //
+                        //Vector3 A = ToVector3(temp_node.triangle.a.vx, temp_node.triangle.a.vy, temp_node.triangle.a.vz);
+                        //Vector3 B = ToVector3(temp_node.triangle.b.vx, temp_node.triangle.b.vy, temp_node.triangle.b.vz);
+                        //Vector3 C = ToVector3(temp_node.triangle.c.vx, temp_node.triangle.c.vy, temp_node.triangle.c.vz);
+                        //Vector3 P = hit.pos;
+                        //Vector2 tA = ToVector2(temp_node.triangle.a.tx, temp_node.triangle.a.ty);
+                        //Vector2 tB = ToVector2(temp_node.triangle.b.tx, temp_node.triangle.b.ty);
+                        //Vector2 tC = ToVector2(temp_node.triangle.c.tx, temp_node.triangle.c.ty);
+                        //
+                        //Color color = Tex2D(texture, width, height, A, B, C, tA, tB, tC, P);
+                        //WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+                    }
+                }
+                
+                if (temp_node.left != -1) 
+                {
+                    BVHNode node = in_BVHNodes[temp_node.left];
+                    if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                    {
+                        stack[top] = temp_node.left; 
+                        top++;
+                    }
+                }
+                if (temp_node.right != -1) 
+                {
+                    BVHNode node = in_BVHNodes[temp_node.right];
+                    if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                    {
+                        stack[top] = temp_node.right;
+                        top++;
+                    }
                 }
             }
-            
-            if (temp_node.left != -1) 
+        }
+
+        if (bestHit.isCollision == 1)
+        {
+            ray = RayShader(bestHit, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely);
+            if (ray.length < 0.0f) 
             {
-                BVHNode node = in_BVHNodes[temp_node.left];
-                if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
-                {
-                    stack[top] = temp_node.left; 
-                    top++;
-                }
+                return;
             }
-            if (temp_node.right != -1) 
-            {
-                BVHNode node = in_BVHNodes[temp_node.right];
-                if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
-                {
-                    stack[top] = temp_node.right;
-                    top++;
-                }
-            }
+        }
+        else
+        {
+            return;
         }
     }
 }
