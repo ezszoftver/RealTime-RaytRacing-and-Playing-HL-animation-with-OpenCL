@@ -119,8 +119,11 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 @"
 Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
 {
-    Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
-    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+    if (hit.isCollision == 1)
+    {
+        Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
+        WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+    }
 
     // nincs tobb sugar inditas (ez a funkcio meg nincs tesztelve)
     Ray nextRay;

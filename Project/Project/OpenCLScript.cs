@@ -992,15 +992,8 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
             }
         }
 
-        if (bestHit.isCollision == 1)
-        {
-            ray = RayShader(bestHit, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely);
-            if (ray.length < 0.0f) 
-            {
-                return;
-            }
-        }
-        else
+        ray = RayShader(bestHit, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely);
+        if (ray.length < 0.0f) 
         {
             return;
         }
