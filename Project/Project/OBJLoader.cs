@@ -166,8 +166,8 @@ namespace Project
                                 string[] vnt = vertex.Split('/');
 
                                 Int32 v_id = Int32.Parse(vnt[0]) - 1;
-                                Int32 t_id = t_id = Int32.Parse(vnt[1]) - 1;
-                                Int32 n_id = t_id = Int32.Parse(vnt[2]) - 1;
+                                Int32 t_id = Int32.Parse(vnt[1]) - 1;
+                                Int32 n_id = Int32.Parse(vnt[2]) - 1;
 
                                 if (i <= 3)
                                 {

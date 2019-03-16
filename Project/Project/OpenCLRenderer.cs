@@ -265,6 +265,7 @@ namespace OpenCLRenderer
                         MessageBox.Show(strText, "Exception");
 
                         Application.Current.Shutdown();
+                        return;
                     }
 
                     // VertexShader
@@ -1140,7 +1141,7 @@ namespace OpenCLRenderer
             KernelCameraRays.SetValueArgument<int>(6, m_iWidth);
             KernelCameraRays.SetValueArgument<int>(7, m_iHeight);
             KernelCameraRays.SetMemoryArgument(8, clInputOutput_Rays);
-            KernelCameraRays.SetMemoryArgument(9, clInputOutput_DepthTextureBuffer);
+            //KernelCameraRays.SetMemoryArgument(9, clInputOutput_DepthTextureBuffer);
 
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);

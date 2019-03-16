@@ -117,18 +117,74 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 
             string @strRayShader =
 @"
-Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
+
+bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
 {
-    if (hit.isCollision == 1)
+    Vector3 lightPos;
+    lightPos.x = 1000.0f;
+    lightPos.y = 1000.0f;
+    lightPos.z = 1000.0f;
+    
+    if (hits->id == 0)
     {
-        Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
-        WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+        Hit hit = hits->hit[hits->id][0];
+        if (hit.isCollision == 1)
+        {
+            Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
+            WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+
+            Ray newRay;
+            newRay.posx = lightPos.x;
+            newRay.posy = lightPos.y;
+            newRay.posz = lightPos.z;
+            Vector3 dir = Normalize(Vector3_Sub(hit.pos, lightPos));
+            newRay.dirx = dir.x;
+            newRay.diry = dir.y;
+            newRay.dirz = dir.z;
+            newRay.length = 5000.0f;
+    
+            rays->id = 1;
+            rays->count[rays->id] = 1;
+            rays->ray[rays->id][0] = newRay;
+
+            return false;
+        }
+    
+        return true;
+    }
+    
+    if (hits->id == 1)
+    {
+        Hit hit2 = hits->hit[hits->id][0];
+        if (hit2.isCollision == 1)
+        {
+            Hit hit1 = hits->hit[0][0];
+            if (hit1.isCollision == 1)
+            {
+                float length2 = Length_Vector3Vector3(lightPos, hit2.pos);
+                float length1 = Length_Vector3Vector3(lightPos, hit1.pos);
+        
+                if ((length2 + 0.001f) < length1)
+                {
+                    Color elapsedColor = ReadTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely));
+
+                    Color shadow;
+                    shadow.red = 0;
+                    shadow.green = 0;
+                    shadow.blue = 0;
+                    shadow.alpha = 255;
+
+                    Color newColor = ColorBlending(elapsedColor, shadow, 0.75f);
+
+                    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), newColor);
+                }
+            }
+        }
+    
+        return true;
     }
 
-    // nincs tobb sugar inditas (ez a funkcio meg nincs tesztelve)
-    Ray nextRay;
-    nextRay.length = -1.0f;
-    return nextRay;
+    return true;
 }
 ";
 
@@ -139,112 +195,114 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
             Random rand = new Random();
 
             {
-                //// load from obj file
-                //string strDirectory = @".\";
-                //OBJLoader objLoader = new OBJLoader();
-                //
-                //mtxMutex.WaitOne();
-                //objLoader.LoadFromFile(@strDirectory, @"Model.obj");
-                //mtxMutex.ReleaseMutex();
-                //
-                //// convert to triangle list
-                //int iMatrixId = m_Scene.GenMatrix();
-                //m_Scene.SetMatrix(iMatrixId, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
-                //
-                //List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
-                //foreach (OBJLoader.Material material in objLoader.materials)
-                //{
-                //    string strDiffuseTextureName = @strDirectory + @material.texture_filename;
-                //    string strSpecularTextureName = @strDirectory + @"Specular.bmp";
-                //    string strNormalTextureName = @strDirectory + @"Normal.bmp";
-                //
-                //    int iMaterialId = m_Scene.GenMaterial();
-                //    m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
-                //
-                //    for (int i = 0; i < material.indices.Count; i += 3)
-                //    {
-                //        Vector3 vA = objLoader.vertices[material.indices[i + 0].id_vertex];
-                //        Vector3 vB = objLoader.vertices[material.indices[i + 1].id_vertex];
-                //        Vector3 vC = objLoader.vertices[material.indices[i + 2].id_vertex];
-                //
-                //        Vector3 nA = objLoader.normals[material.indices[i + 0].id_normal];
-                //        Vector3 nB = objLoader.normals[material.indices[i + 1].id_normal];
-                //        Vector3 nC = objLoader.normals[material.indices[i + 2].id_normal];
-                //
-                //        Vector2 tA = objLoader.text_coords[material.indices[i + 0].id_textcoord];
-                //        Vector2 tB = objLoader.text_coords[material.indices[i + 1].id_textcoord];
-                //        Vector2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
-                //
-                //        OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
-                //        vertexA.m_Vx = vA.X;
-                //        vertexA.m_Vy = vA.Y;
-                //        vertexA.m_Vz = vA.Z;
-                //        vertexA.m_Nx = nA.X;
-                //        vertexA.m_Ny = nA.Y;
-                //        vertexA.m_Nz = nA.Z;
-                //        vertexA.m_TCx = tA.X;
-                //        vertexA.m_TCy = tA.Y;
-                //        vertexA.m_iNumMatrices = 1;
-                //        vertexA.m_iMatrixId1 = iMatrixId;
-                //        vertexA.m_fWeight1 = 1.0f;
-                //        vertexA.m_iMatrixId2 = -1;
-                //        vertexA.m_fWeight2 = 0.0f;
-                //        vertexA.m_iMatrixId3 = -1;
-                //        vertexA.m_fWeight3 = 0.0f;
-                //
-                //        OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
-                //        vertexB.m_Vx = vB.X;
-                //        vertexB.m_Vy = vB.Y;
-                //        vertexB.m_Vz = vB.Z;
-                //        vertexB.m_Nx = nB.X;
-                //        vertexB.m_Ny = nB.Y;
-                //        vertexB.m_Nz = nB.Z;
-                //        vertexB.m_TCx = tB.X;
-                //        vertexB.m_TCy = tB.Y;
-                //        vertexB.m_iNumMatrices = 1;
-                //        vertexB.m_iMatrixId1 = iMatrixId;
-                //        vertexB.m_fWeight1 = 1.0f;
-                //        vertexB.m_iMatrixId2 = -1;
-                //        vertexB.m_fWeight2 = 0.0f;
-                //        vertexB.m_iMatrixId3 = -1;
-                //        vertexB.m_fWeight3 = 0.0f;
-                //
-                //        OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
-                //        vertexC.m_Vx = vC.X;
-                //        vertexC.m_Vy = vC.Y;
-                //        vertexC.m_Vz = vC.Z;
-                //        vertexC.m_Nx = nC.X;
-                //        vertexC.m_Ny = nC.Y;
-                //        vertexC.m_Nz = nC.Z;
-                //        vertexC.m_TCx = tC.X;
-                //        vertexC.m_TCy = tC.Y;
-                //        vertexC.m_iNumMatrices = 1;
-                //        vertexC.m_iMatrixId1 = iMatrixId;
-                //        vertexC.m_fWeight1 = 1.0f;
-                //        vertexC.m_iMatrixId2 = -1;
-                //        vertexC.m_fWeight2 = 0.0f;
-                //        vertexC.m_iMatrixId3 = -1;
-                //        vertexC.m_fWeight3 = 0.0f;
-                //
-                //        OpenCLRenderer.Triangle newTriangle = new OpenCLRenderer.Triangle();
-                //        newTriangle.m_A = vertexA;
-                //        newTriangle.m_B = vertexB;
-                //        newTriangle.m_C = vertexC;
-                //        newTriangle.m_iMaterialId = iMaterialId;
-                //
-                //        triangles.Add(newTriangle);
-                //    }
-                //}
-                //
-                //int iId;
-                //iId = m_Scene.GenObject();
-                //OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
-                //m_Scene.SetObject(iId, staticObject);
-                //objLoader.Release();
-                //triangles.Clear();
-
                 // load from obj file
                 string strDirectory = @".\";
+                OBJLoader objLoader = new OBJLoader();
+                
+                mtxMutex.WaitOne();
+                objLoader.LoadFromFile(@strDirectory, @"Talaj.obj");
+                mtxMutex.ReleaseMutex();
+
+                // convert to triangle list
+                //int iMatrixId = m_Scene.GenMatrix();
+                //m_Scene.SetMatrix(iMatrixId, Matrix4.Identity);
+                int iMatrixId = 0;
+
+
+                List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
+                foreach (OBJLoader.Material material in objLoader.materials)
+                {
+                    string strDiffuseTextureName = @strDirectory + @material.texture_filename;
+                    string strSpecularTextureName = @strDirectory + @"Specular.bmp";
+                    string strNormalTextureName = @strDirectory + @"Normal.bmp";
+                
+                    int iMaterialId = m_Scene.GenMaterial();
+                    m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
+                
+                    for (int i = 0; i < material.indices.Count; i += 3)
+                    {
+                        Vector3 vA = objLoader.vertices[material.indices[i + 0].id_vertex];
+                        Vector3 vB = objLoader.vertices[material.indices[i + 1].id_vertex];
+                        Vector3 vC = objLoader.vertices[material.indices[i + 2].id_vertex];
+                
+                        Vector3 nA = objLoader.normals[material.indices[i + 0].id_normal];
+                        Vector3 nB = objLoader.normals[material.indices[i + 1].id_normal];
+                        Vector3 nC = objLoader.normals[material.indices[i + 2].id_normal];
+                
+                        Vector2 tA = objLoader.text_coords[material.indices[i + 0].id_textcoord];
+                        Vector2 tB = objLoader.text_coords[material.indices[i + 1].id_textcoord];
+                        Vector2 tC = objLoader.text_coords[material.indices[i + 2].id_textcoord];
+                
+                        OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
+                        vertexA.m_Vx = vA.X;
+                        vertexA.m_Vy = vA.Y;
+                        vertexA.m_Vz = vA.Z;
+                        vertexA.m_Nx = nA.X;
+                        vertexA.m_Ny = nA.Y;
+                        vertexA.m_Nz = nA.Z;
+                        vertexA.m_TCx = tA.X;
+                        vertexA.m_TCy = tA.Y;
+                        vertexA.m_iNumMatrices = 1;
+                        vertexA.m_iMatrixId1 = iMatrixId;
+                        vertexA.m_fWeight1 = 1.0f;
+                        vertexA.m_iMatrixId2 = -1;
+                        vertexA.m_fWeight2 = 0.0f;
+                        vertexA.m_iMatrixId3 = -1;
+                        vertexA.m_fWeight3 = 0.0f;
+                
+                        OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
+                        vertexB.m_Vx = vB.X;
+                        vertexB.m_Vy = vB.Y;
+                        vertexB.m_Vz = vB.Z;
+                        vertexB.m_Nx = nB.X;
+                        vertexB.m_Ny = nB.Y;
+                        vertexB.m_Nz = nB.Z;
+                        vertexB.m_TCx = tB.X;
+                        vertexB.m_TCy = tB.Y;
+                        vertexB.m_iNumMatrices = 1;
+                        vertexB.m_iMatrixId1 = iMatrixId;
+                        vertexB.m_fWeight1 = 1.0f;
+                        vertexB.m_iMatrixId2 = -1;
+                        vertexB.m_fWeight2 = 0.0f;
+                        vertexB.m_iMatrixId3 = -1;
+                        vertexB.m_fWeight3 = 0.0f;
+                
+                        OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
+                        vertexC.m_Vx = vC.X;
+                        vertexC.m_Vy = vC.Y;
+                        vertexC.m_Vz = vC.Z;
+                        vertexC.m_Nx = nC.X;
+                        vertexC.m_Ny = nC.Y;
+                        vertexC.m_Nz = nC.Z;
+                        vertexC.m_TCx = tC.X;
+                        vertexC.m_TCy = tC.Y;
+                        vertexC.m_iNumMatrices = 1;
+                        vertexC.m_iMatrixId1 = iMatrixId;
+                        vertexC.m_fWeight1 = 1.0f;
+                        vertexC.m_iMatrixId2 = -1;
+                        vertexC.m_fWeight2 = 0.0f;
+                        vertexC.m_iMatrixId3 = -1;
+                        vertexC.m_fWeight3 = 0.0f;
+                
+                        OpenCLRenderer.Triangle newTriangle = new OpenCLRenderer.Triangle();
+                        newTriangle.m_A = vertexA;
+                        newTriangle.m_B = vertexB;
+                        newTriangle.m_C = vertexC;
+                        newTriangle.m_iMaterialId = iMaterialId;
+                
+                        triangles.Add(newTriangle);
+                    }
+                }
+                
+                int iId;
+                iId = m_Scene.GenObject();
+                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateScale(10.0f,1.0f,10.0f));
+                m_Scene.SetObject(iId, staticObject);
+                objLoader.Release();
+                triangles.Clear();
+
+                // load from obj file
+                strDirectory = @".\";
                 smd = new SMDLoader();
                 mesh = new Mesh();
 
@@ -260,10 +318,10 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
 
                 smd.SetAnimation("Anim1");
 
-                int iMatrixOffset = m_Scene.NumMatrices();
+                iMatrixOffset = m_Scene.NumMatrices();
                 for (int i = 0; i < mesh.transforms.Count; i++)
                 {
-                    int iMatrixId = m_Scene.GenMatrix();
+                    iMatrixId = m_Scene.GenMatrix();
                     m_Scene.SetMatrix(iMatrixId, smd.GetMatrix(i) * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
                 }
 
@@ -272,7 +330,7 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
 
                 mtxMutex.ReleaseMutex();
 
-                List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
+                triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (Mesh.Material material in mesh.materials)
                 {
                     string strDiffuseTextureName = @strDirectory + @material.texture_name;
@@ -399,7 +457,7 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
                     }
                 }
 
-                int iId;
+                //int iId;
                 iId = m_Scene.GenObject();
                 OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
                 m_Scene.SetObject(iId, dynamicObject);
@@ -416,6 +474,7 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
             
             m_ElapsedTime = m_CurrentTime = DateTime.Now;
             m_fSec = 0.0f;
+            m_fFullTime = 0.0f;
             m_Timer.Start();
         }
 
@@ -425,6 +484,7 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
             m_ElapsedTime = m_CurrentTime;
             m_CurrentTime = DateTime.Now;
             m_fDeltaTime = (float)(m_CurrentTime - m_ElapsedTime).TotalSeconds;
+            
 
             // FPS
             FPS++;
@@ -445,13 +505,16 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
             smd.SetTime(time, mesh);
             for (int i = 0; i < mesh.transforms.Count; i++)
             {
-                m_Scene.SetMatrix(i, mesh.transforms[i] * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+                m_Scene.SetMatrix(iMatrixOffset + i, mesh.transforms[i] * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
             }
 
             m_Scene.UpdateMatrices();
             m_Scene.RunVertexShader();
             m_Scene.RunRefitTreeShader();
-            m_Scene.SetCamera(new Vector3(-100, 100, -100), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
+
+            m_fFullTime += m_fDeltaTime;
+            float fSpeed = 0.5f;
+            m_Scene.SetCamera(new Vector3(-400.0f * (float)Math.Cos(m_fFullTime * fSpeed), 150, -400.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 8.0f, 1000.0f);
             m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
@@ -464,10 +527,12 @@ Ray RayShader(Hit hit, __global Material *materials, __global unsigned char *tex
         DateTime m_CurrentTime;
         float m_fDeltaTime;
         float m_fSec;
+        float m_fFullTime;
 
         SMDLoader smd;
         Mesh mesh;
         float time = 0.0f;
+        int iMatrixOffset;
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {

@@ -642,14 +642,21 @@ Vector3 Cross(Vector3 a, Vector3 b)
     return ret;
 }
 
-float Length(Vector3 a)
+float Length_Vector3(Vector3 a)
 {
     return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
+float Length_Vector3Vector3(Vector3 a, Vector3 b)
+{
+    Vector3 c;
+    c = Vector3_Sub(a, b);
+    return sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
+}
+
 Vector3 Normalize(Vector3 a)
 {
-    float length = Length(a);
+    float length = Length_Vector3(a);
     Vector3 ret;
     ret.x = a.x / length;
     ret.y = a.y / length;
@@ -733,7 +740,7 @@ __kernel void Main_RefitTree_LevelX(__global BVHNode *in_BVHNodes, __global BVHN
     }
 }
 
-__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float in_Angle, float in_ZFar, int in_Width, int in_Height, __global Ray *inout_Rays, __global float *inout_DepthTexture)
+__kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vector3 in_Right, float in_Angle, float in_ZFar, int in_Width, int in_Height, __global Ray *inout_Rays)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -764,33 +771,32 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
     ray.dirz = dir2.z;
     ray.length = in_ZFar;
 
-    inout_DepthTexture[id] = in_ZFar;
     inout_Rays[id] = ray;
 }
 
-Vector3 Ray_GetPoint(Ray *ray, float t)
+Vector3 Ray_GetPoint(Ray ray, float t)
 {
-    return ( Vector3_Add(ToVector3(ray->posx, ray->posy, ray->posz), ToVector3(ray->dirx * t, ray->diry * t, ray->dirz * t)) );
+    return ( Vector3_Add(ToVector3(ray.posx, ray.posy, ray.posz), ToVector3(ray.dirx * t, ray.diry * t, ray.dirz * t)) );
 }
 
-Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
+Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 {
     Hit ret;
     ret.isCollision = 0;
 
-    Vector3 A = ToVector3(tri->a.vx, tri->a.vy, tri->a.vz);
-    Vector3 B = ToVector3(tri->b.vx, tri->b.vy, tri->b.vz);
-    Vector3 C = ToVector3(tri->c.vx, tri->c.vy, tri->c.vz);
-    Vector2 tA = ToVector2(tri->a.tx, tri->a.ty);
-    Vector2 tB = ToVector2(tri->b.tx, tri->b.ty);
-    Vector2 tC = ToVector2(tri->c.tx, tri->c.ty);
-    Vector3 normal = ToVector3(tri->normalx, tri->normaly, tri->normalz);
+    Vector3 A = ToVector3(tri.a.vx, tri.a.vy, tri.a.vz);
+    Vector3 B = ToVector3(tri.b.vx, tri.b.vy, tri.b.vz);
+    Vector3 C = ToVector3(tri.c.vx, tri.c.vy, tri.c.vz);
+    Vector2 tA = ToVector2(tri.a.tx, tri.a.ty);
+    Vector2 tB = ToVector2(tri.b.tx, tri.b.ty);
+    Vector2 tC = ToVector2(tri.c.tx, tri.c.ty);
+    Vector3 normal = ToVector3(tri.normalx, tri.normaly, tri.normalz);
 
-    float cost = Vector3_Dot(ToVector3(ray->dirx, ray->diry, ray->dirz), normal);
+    float cost = Vector3_Dot(ToVector3(ray.dirx, ray.diry, ray.dirz), normal);
 	if (fabs(cost) <= 0.0001f) 
 		return ret;
     
-	float t = Vector3_Dot(Vector3_Sub(A, ToVector3(ray->posx, ray->posy, ray->posz)), normal) / cost;
+	float t = Vector3_Dot(Vector3_Sub(A, ToVector3(ray.posx, ray.posy, ray.posz)), normal) / cost;
 	if(t < 0.0001f) 
 		return ret;
     
@@ -799,13 +805,14 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
 	float c1 = Vector3_Dot(Cross(Vector3_Sub(B, A), Vector3_Sub(P, A)), normal);
 	float c2 = Vector3_Dot(Cross(Vector3_Sub(C, B), Vector3_Sub(P, B)), normal);
 	float c3 = Vector3_Dot(Cross(Vector3_Sub(A, C), Vector3_Sub(P, C)), normal);
-	if (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f) 
+	if ( (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)
+      || (c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f) )
     {
 		ret.isCollision = 1;
         ret.pos = P;
         ret.normal = normal;
         ret.t = t;
-        ret.materialId = tri->materialId;
+        ret.materialId = tri.materialId;
 
         // texture coords
         Vector3 u = Vector3_Sub(B, A);
@@ -816,12 +823,19 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
         float s = ((Vector3_Dot(u, v) * Vector3_Dot(w, v)) - (Vector3_Dot(v, v) * Vector3_Dot(w, u))) / denom;
 
         // repeat texture, on
-        tA.x = fmod(tA.x, 1.0f); if (tA.x < 0.0f) { tA.x += 1.0f; }
-        tA.y = fmod(tA.y, 1.0f); if (tA.y < 0.0f) { tA.y += 1.0f; }
-        tB.x = fmod(tB.x, 1.0f); if (tB.x < 0.0f) { tB.x += 1.0f; }
-        tB.y = fmod(tB.y, 1.0f); if (tB.y < 0.0f) { tB.y += 1.0f; }
-        tC.x = fmod(tC.x, 1.0f); if (tC.x < 0.0f) { tC.x += 1.0f; }
-        tC.y = fmod(tC.y, 1.0f); if (tC.y < 0.0f) { tC.y += 1.0f; }
+        while (tA.x < 0.0f) { tA.x += 1.0f; } 
+        while (tA.y < 0.0f) { tA.y += 1.0f; } 
+        while (tB.x < 0.0f) { tB.x += 1.0f; } 
+        while (tB.y < 0.0f) { tB.y += 1.0f; } 
+        while (tC.x < 0.0f) { tC.x += 1.0f; } 
+        while (tC.y < 0.0f) { tC.y += 1.0f; } 
+
+        while (tA.x > 1.0f) { tA.x -= 1.0f; }
+        while (tA.y > 1.0f) { tA.y -= 1.0f; }
+        while (tB.x > 1.0f) { tB.x -= 1.0f; }
+        while (tB.y > 1.0f) { tB.y -= 1.0f; }
+        while (tC.x > 1.0f) { tC.x -= 1.0f; }
+        while (tC.y > 1.0f) { tC.y -= 1.0f; }
 
         Vector2 tu = Vector2_Sub(tB, tA);
         Vector2 tv = Vector2_Sub(tC, tA);
@@ -836,29 +850,29 @@ Hit Intersect_RayTriangle(Ray *ray, Triangle *tri)
 	return ret;
 }
 
-int Intersect_RayBBox(Ray *ray, BBox *bbox) 
+int Intersect_RayBBox(Ray ray, BBox bbox) 
 {
     Vector3 lb;
-    lb.x = bbox->minx;
-    lb.y = bbox->miny;
-    lb.z = bbox->minz;
+    lb.x = bbox.minx;
+    lb.y = bbox.miny;
+    lb.z = bbox.minz;
 
     Vector3 rt;
-    rt.x = bbox->maxx;
-    rt.y = bbox->maxy;
-    rt.z = bbox->maxz;
+    rt.x = bbox.maxx;
+    rt.y = bbox.maxy;
+    rt.z = bbox.maxz;
 
     Vector3 dirfrac;
-    dirfrac.x = 1.0f / ray->dirx;
-    dirfrac.y = 1.0f / ray->diry;
-    dirfrac.z = 1.0f / ray->dirz;
+    dirfrac.x = 1.0f / ray.dirx;
+    dirfrac.y = 1.0f / ray.diry;
+    dirfrac.z = 1.0f / ray.dirz;
     
-    float t1 = (lb.x - ray->posx) * dirfrac.x;
-    float t2 = (rt.x - ray->posx) * dirfrac.x;
-    float t3 = (lb.y - ray->posy) * dirfrac.y;
-    float t4 = (rt.y - ray->posy) * dirfrac.y;
-    float t5 = (lb.z - ray->posz) * dirfrac.z;
-    float t6 = (rt.z - ray->posz) * dirfrac.z;
+    float t1 = (lb.x - ray.posx) * dirfrac.x;
+    float t2 = (rt.x - ray.posx) * dirfrac.x;
+    float t3 = (lb.y - ray.posy) * dirfrac.y;
+    float t4 = (rt.y - ray.posy) * dirfrac.y;
+    float t5 = (lb.z - ray.posz) * dirfrac.z;
+    float t6 = (rt.z - ray.posz) * dirfrac.z;
     
     float tmin = Max(Max(min(t1, t2), Min(t3, t4)), Min(t5, t6));
     float tmax = Min(Min(max(t1, t2), Max(t3, t4)), Max(t5, t6));
@@ -901,6 +915,21 @@ Color ReadTexture(__global unsigned char *texture, int width, int height, Vector
     return color;
 }
 
+Color ColorBlending(Color color1, Color color2, float t)
+{
+    float red = ((float)color1.red * (1.0f - t)) + ((float)color2.red * t);
+    float green = ((float)color1.green * (1.0f - t)) + ((float)color2.green * t);
+    float blue = ((float)color1.blue * (1.0f - t)) + ((float)color2.blue * t);
+    float alpha = 255.0f;
+
+    Color ret;
+    ret.red = (unsigned char)red;
+    ret.green = (unsigned char)green;
+    ret.blue = (unsigned char)blue;
+    ret.alpha = (unsigned char)alpha;
+    return ret;
+}
+
 Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, Vector2 uv)
 {
     Material material = materials[materialId];
@@ -917,6 +946,22 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     return ret;
 }
 
+typedef struct
+{
+    int id;
+    int count[16];
+    Ray ray[16][16];
+}
+Rays;
+
+typedef struct
+{
+    int id;
+    int count[16];
+    Hit hit[16][16];
+}
+Hits;
+
 " + @m_strRayShader + @"
 
 __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
@@ -925,7 +970,14 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     int pixely = get_global_id(1);
     int id = (in_Width * pixely) + pixelx;
 
-    Ray ray = in_Rays[id];
+    Rays rays;
+    rays.id = 0;
+    rays.count[rays.id] = 1;
+    rays.ray[rays.id][0] = in_Rays[id];
+    
+    Hits hits;
+    hits.id = rays.id;
+    hits.count[rays.id] = 1;
 
     // clear
     Color background;
@@ -937,63 +989,69 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
 
     for(;true;)
     {
-        Hit bestHit;
-        bestHit.isCollision = 0;
-        
-        int isSearching = 1;
-
-        for (int i = 0; i < in_NumBeginObjects; i++)
+        for(int ray_id = 0; ray_id < rays.count[rays.id]; ray_id++)
         {
-            int rootId = in_BeginObjects[i];
-         
-            int stack[100];
-            int top = 0;
-        
-            stack[top] = rootId;
-            top++;
-        
-            for(;isSearching == 1;)
+            hits.id = rays.id;
+            Ray ray = rays.ray[rays.id][ray_id];
+            hits.count[rays.id] = rays.count[rays.id];
+            hits.hit[rays.id][ray_id].isCollision = 0;
+            hits.hit[rays.id][ray_id].t = 1000000.0f;
+
+            for (int i = 0; i < in_NumBeginObjects; i++)
             {
-                top--;
-                if (top < 0) { isSearching = 0; continue; }
-                BVHNode temp_node = in_BVHNodes[stack[top]];
-        
-                if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
+                int isSearching = 1;
+
+                int rootId = in_BeginObjects[i];
+             
+                int stack[100];
+                int top = 0;
+            
+                stack[top] = rootId;
+                top++;
+            
+                for(;isSearching == 1;)
                 {
-                    // haromszog-ray utkozesvizsgalat
-                    Hit hit = Intersect_RayTriangle(&ray, &temp_node.triangle);
-        
-                    if (hit.isCollision == 1 && hit.t < inout_DepthTexture[id])
+                    top--;
+                    if (top < 0) { isSearching = 0; continue; }
+                    BVHNode temp_node = in_BVHNodes[stack[top]];
+            
+                    if (temp_node.left == -1 && temp_node.right == -1) // ha haromszog
                     {
-                        inout_DepthTexture[id] = hit.t;
-        
-                        bestHit = hit;
+                        // haromszog-ray utkozesvizsgalat
+                        Hit hit = Intersect_RayTriangle(ray, temp_node.triangle);
+            
+                        if (hit.isCollision == 1)
+                        {
+                            if (hit.t < hits.hit[rays.id][ray_id].t)
+                            {
+                                hits.hit[rays.id][ray_id] = hit;
+                            }
+                        }
                     }
-                }
-                
-                if (temp_node.left != -1) 
-                {
-                    BVHNode node = in_BVHNodes[temp_node.left];
-                    if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                    
+                    if (temp_node.left != -1) 
                     {
-                        stack[top] = temp_node.left; 
-                        top++;
+                        BVHNode node = in_BVHNodes[temp_node.left];
+                        if (1 == Intersect_RayBBox(ray, node.bbox))
+                        {
+                            stack[top] = temp_node.left; 
+                            top++;
+                        }
                     }
-                }
-                if (temp_node.right != -1) 
-                {
-                    BVHNode node = in_BVHNodes[temp_node.right];
-                    if (1 == Intersect_RayBBox(&ray, &(node.bbox)))
+                    if (temp_node.right != -1) 
                     {
-                        stack[top] = temp_node.right;
-                        top++;
+                        BVHNode node = in_BVHNodes[temp_node.right];
+                        if (1 == Intersect_RayBBox(ray, node.bbox))
+                        {
+                            stack[top] = temp_node.right;
+                            top++;
+                        }
                     }
                 }
             }
         }
 
-        ray = RayShader(bestHit, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely);
-        if (ray.length < 0.0f) 
+        if(true == RayShader(&hits, &rays, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely))
         {
             return;
         }
