@@ -432,9 +432,6 @@ typedef struct
     float maxx;
     float maxy;
     float maxz;
-    float centerx;
-    float centery;
-    float centerz;
 }
 BBox;
 
@@ -543,10 +540,6 @@ BBox GenBBox_Tri(Triangle tri)
     bbox.maxy = fMaxY;
     bbox.maxz = fMaxZ;
     
-    bbox.centerx = (fMinX + fMaxX) / 2.0f;
-    bbox.centery = (fMinY + fMaxY) / 2.0f;
-    bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
-
     return bbox;
 }
 
@@ -597,10 +590,6 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     bbox.maxx = fMaxX;
     bbox.maxy = fMaxY;
     bbox.maxz = fMaxZ;
-
-    bbox.centerx = (fMinX + fMaxX) / 2.0f;
-    bbox.centerx = (fMinY + fMaxY) / 2.0f;
-    bbox.centerx = (fMinZ + fMaxZ) / 2.0f;
 
     return bbox;
 }
@@ -708,10 +697,6 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             //outBVHNode.bbox.maxx = 0;
             //outBVHNode.bbox.maxy = 0;
             //outBVHNode.bbox.maxz = 0;
-            //
-            //outBVHNode.bbox.centerx = 0;
-            //outBVHNode.bbox.centery = 0;
-            //outBVHNode.bbox.centerz = 0;
         }
     }
 
@@ -752,7 +737,7 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
     Vector3 dir = ToVector3(in_Dir.x, in_Dir.y, in_Dir.z);
     Vector3 right = ToVector3(in_Right.x, in_Right.y, in_Right.z);
 
-    float stepPerPixel = tan(in_Angle) / ((float)in_Height / 2.0f);
+    float stepPerPixel = tan(in_Angle) / ((float)in_Height);
 
     int movePixelX = pixelx - (in_Width / 2);
 	int movePixelY = pixely - (in_Height / 2);
@@ -964,7 +949,7 @@ Hits;
 
 " + @m_strRayShader + @"
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, __global float *inout_DepthTexture, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);

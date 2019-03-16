@@ -62,10 +62,6 @@ namespace OpenCLRenderer
         public float maxx;
         public float maxy;
         public float maxz;
-
-        public float centerx;
-        public float centery;
-        public float centerz;
     }
 
     struct BVHNode
@@ -497,10 +493,6 @@ namespace OpenCLRenderer
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
 
-            bbox.centerx = (fMinX + fMaxX) / 2.0f;
-            bbox.centery = (fMinY + fMaxY) / 2.0f;
-            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
-
             return bbox;
         }
 
@@ -551,10 +543,6 @@ namespace OpenCLRenderer
             bbox.maxx = fMaxX;
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
-
-            bbox.centerx = (fMinX + fMaxX) / 2.0f;
-            bbox.centery = (fMinY + fMaxY) / 2.0f;
-            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
 
             return bbox;
         }
@@ -1141,7 +1129,6 @@ namespace OpenCLRenderer
             KernelCameraRays.SetValueArgument<int>(6, m_iWidth);
             KernelCameraRays.SetValueArgument<int>(7, m_iHeight);
             KernelCameraRays.SetMemoryArgument(8, clInputOutput_Rays);
-            //KernelCameraRays.SetMemoryArgument(9, clInputOutput_DepthTextureBuffer);
 
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
@@ -1160,16 +1147,15 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
             KernelRayShader.SetMemoryArgument(2, clInput_BeginObjects);
             KernelRayShader.SetValueArgument<int>(3, m_iNumBeginObjects);
-            KernelRayShader.SetMemoryArgument(4, clInputOutput_DepthTextureBuffer);
-            KernelRayShader.SetValueArgument<int>(5, m_iWidth);
-            KernelRayShader.SetValueArgument<int>(6, m_iHeight);
-            KernelRayShader.SetValueArgument<byte>(7, iRed);
-            KernelRayShader.SetValueArgument<byte>(8, iGreen);
-            KernelRayShader.SetValueArgument<byte>(9, iBlue);
-            KernelRayShader.SetValueArgument<byte>(10, iAlpha);
-            KernelRayShader.SetMemoryArgument(11, clInput_Materials);
-            KernelRayShader.SetMemoryArgument(12, clInput_TexturesData);
-            KernelRayShader.SetMemoryArgument(13, clOutput_TextureBuffer);
+            KernelRayShader.SetValueArgument<int>(4, m_iWidth);
+            KernelRayShader.SetValueArgument<int>(5, m_iHeight);
+            KernelRayShader.SetValueArgument<byte>(6, iRed);
+            KernelRayShader.SetValueArgument<byte>(7, iGreen);
+            KernelRayShader.SetValueArgument<byte>(8, iBlue);
+            KernelRayShader.SetValueArgument<byte>(9, iAlpha);
+            KernelRayShader.SetMemoryArgument(10, clInput_Materials);
+            KernelRayShader.SetMemoryArgument(11, clInput_TexturesData);
+            KernelRayShader.SetMemoryArgument(12, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelRayShader, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
@@ -1240,10 +1226,6 @@ namespace OpenCLRenderer
             bbox.maxy = fMaxY;
             bbox.maxz = fMaxZ;
 
-            bbox.centerx = (fMinX + fMaxX) / 2.0f;
-            bbox.centery = (fMinY + fMaxY) / 2.0f;
-            bbox.centerz = (fMinZ + fMaxZ) / 2.0f;
-
             return bbox;
         }
 
@@ -1265,11 +1247,6 @@ namespace OpenCLRenderer
             clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.WriteOnly, iWidth * iHeight * 4);
 
             writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
-
-            // depth
-            //clInputOutput_DepthTextureBuffer
-            if (null != clInputOutput_DepthTextureBuffer) { clInputOutput_DepthTextureBuffer.Dispose(); clInputOutput_DepthTextureBuffer = null; }
-            clInputOutput_DepthTextureBuffer = new ComputeBuffer<float>(m_Context, ComputeMemoryFlags.ReadWrite, iWidth * iHeight);
 
             m_mtxMutex.ReleaseMutex();
         }
@@ -1311,9 +1288,7 @@ namespace OpenCLRenderer
 
             // rendertarget
             if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
-            // depth
-            if (null != clInputOutput_DepthTextureBuffer) { clInputOutput_DepthTextureBuffer.Dispose(); clInputOutput_DepthTextureBuffer = null; }
-
+            
             if (null != kernelVertexShader    ) { kernelVertexShader.Dispose(); kernelVertexShader = null; }
             if (null != KernelRefitTree_LevelX) { KernelRefitTree_LevelX.Dispose(); KernelRefitTree_LevelX = null; }
             if (null != KernelCameraRays      ) { KernelCameraRays      .Dispose(); KernelCameraRays       = null; }
@@ -1371,7 +1346,5 @@ namespace OpenCLRenderer
         // rendertarget
         ComputeBuffer<byte> clOutput_TextureBuffer = null;
         WriteableBitmap writeableBitmap = null;
-        // depth
-        ComputeBuffer<float> clInputOutput_DepthTextureBuffer = null;
     }
 }

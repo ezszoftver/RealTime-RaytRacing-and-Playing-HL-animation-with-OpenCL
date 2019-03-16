@@ -76,15 +76,7 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
     Vertex out;
     
-    out.tx          = in.tx;
-    out.ty          = in.ty;
-    out.numMatrices = in.numMatrices;
-    out.matrixId1   = in.matrixId1;
-    out.matrixId2   = in.matrixId2;
-    out.matrixId3   = in.matrixId3;
-    out.weight1     = in.weight1;
-    out.weight2     = in.weight2;
-    out.weight3     = in.weight3;
+    out = in;
 
     if (1 == in.numMatrices)
     {
@@ -164,7 +156,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 float length2 = Length_Vector3Vector3(lightPos, hit2.pos);
                 float length1 = Length_Vector3Vector3(lightPos, hit1.pos);
         
-                if ((length2 + 0.001f) < length1)
+                if ((length2 + 0.005f) < length1)
                 {
                     Color elapsedColor = ReadTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely));
 
@@ -514,7 +506,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
 
             m_fFullTime += m_fDeltaTime;
             float fSpeed = 0.5f;
-            m_Scene.SetCamera(new Vector3(-400.0f * (float)Math.Cos(m_fFullTime * fSpeed), 150, -400.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 8.0f, 1000.0f);
+            m_Scene.SetCamera(new Vector3(-400.0f * (float)Math.Cos(m_fFullTime * fSpeed), 150, -400.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
             m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
