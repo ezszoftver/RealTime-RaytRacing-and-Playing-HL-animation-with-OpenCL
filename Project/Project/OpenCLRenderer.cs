@@ -1172,7 +1172,6 @@ namespace OpenCLRenderer
             Win32.CopyMemory(writeableBitmap.BackBuffer, source, m_iWidth * m_iHeight * 4);
             writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, m_iWidth, m_iHeight));
             writeableBitmap.Unlock();
-
             cmdQueue.Unmap(clOutput_TextureBuffer, ref source, null);
             cmdQueue.Finish();
 
