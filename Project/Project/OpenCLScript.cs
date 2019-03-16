@@ -791,7 +791,7 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 	float c2 = Vector3_Dot(Cross(Vector3_Sub(C, B), Vector3_Sub(P, B)), normal);
 	float c3 = Vector3_Dot(Cross(Vector3_Sub(A, C), Vector3_Sub(P, C)), normal);
 	if ( (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)
-      || (c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f) )
+      /*|| (c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f)*/ )
     {
 		ret.isCollision = 1;
         ret.pos = P;
