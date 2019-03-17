@@ -164,7 +164,7 @@ namespace OpenCLRenderer
                 ComputeContext newContext = null;
                 try
                 {
-                    newContext = new ComputeContext(ComputeDeviceTypes.All, properties, null, IntPtr.Zero);
+                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
                 }
                 catch (Exception ex)
                 {
@@ -223,7 +223,7 @@ namespace OpenCLRenderer
                 ComputeContext newContext = null;
                 try
                 {
-                    newContext = new ComputeContext(ComputeDeviceTypes.All, properties, null, IntPtr.Zero);
+                    newContext = new ComputeContext(ComputeDeviceTypes.Gpu, properties, null, IntPtr.Zero);
                 }
                 catch (Exception ex)
                 {
