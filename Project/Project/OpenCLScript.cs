@@ -780,7 +780,7 @@ int Intersect_RayBBox(Ray ray, BBox bbox)
 
 void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, Color color)
 {
-    int id = (width * (int)((height - 1) - pixel.y) * 4) + ((int)pixel.x * 4);
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
     texture[id + 0] = color.blue;
     texture[id + 1] = color.green;
@@ -790,7 +790,7 @@ void WriteTexture(__global unsigned char *texture, int width, int height, float2
 
 Color ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
 {
-    int id = (width * (int)((height - 1) - pixel.y) * 4) + ((int)pixel.x * 4);
+    int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
     Color color;
     color.blue  = texture[id + 0];

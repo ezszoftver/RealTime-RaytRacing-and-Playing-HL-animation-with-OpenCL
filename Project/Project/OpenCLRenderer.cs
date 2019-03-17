@@ -1158,7 +1158,7 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(12, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
-            cmdQueue.Execute(KernelRayShader, null, new long[] { (m_iWidth + 15) / 16 * 16, (m_iHeight + 15) / 16 * 16 }, new long[] { 16, 16 }, eventList);
+            cmdQueue.Execute(KernelRayShader, null, new long[] { (m_iWidth + 7) / 8 * 8, (m_iHeight + 7) / 8 * 8 }, new long[] { 8, 8 }, eventList);
             cmdQueue.Finish();
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
