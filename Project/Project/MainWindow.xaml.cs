@@ -164,7 +164,6 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                     shadow.red = 0;
                     shadow.green = 0;
                     shadow.blue = 0;
-                    shadow.alpha = 255;
 
                     Color newColor = ColorBlending(elapsedColor, shadow, 0.75f);
 

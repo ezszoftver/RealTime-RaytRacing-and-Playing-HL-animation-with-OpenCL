@@ -1158,7 +1158,7 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(12, clOutput_TextureBuffer);
             
             ComputeEventList eventList = new ComputeEventList();
-            cmdQueue.Execute(KernelRayShader, null, new long[] { (m_iWidth + 7) / 8 * 8, (m_iHeight + 7) / 8 * 8 }, new long[] { 8, 8 }, eventList);
+            cmdQueue.Execute(KernelRayShader, null, new long[] { (m_iWidth + 15) / 16 * 16, (m_iHeight + 15) / 16 * 16 }, new long[] { 16, 16 }, eventList);
             cmdQueue.Finish();
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
@@ -1245,7 +1245,7 @@ namespace OpenCLRenderer
             if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
             clOutput_TextureBuffer = new ComputeBuffer<byte>(m_Context, ComputeMemoryFlags.ReadWrite, iWidth * iHeight * 4);
 
-            writeableBitmap = new WriteableBitmap(iWidth, iHeight, 96, 96, PixelFormats.Bgra32, null);
+            writeableBitmap = new WriteableBitmap(iWidth, iHeight, 1, 1, PixelFormats.Bgra32, null);
 
             m_mtxMutex.ReleaseMutex();
         }

@@ -13,13 +13,6 @@
         Closing="Window_Closing">
     <Grid Background="AliceBlue">
         <Label x:Name="labelMessage" Content="Please Right-Click, to choose OpenCL Device" FontSize="20" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-        <Image x:Name="image" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" SizeChanged="Image_SizeChanged">
-            <Image.LayoutTransform>
-                <TransformGroup>
-                    <ScaleTransform ScaleY="-1.0" ScaleX="1.0"/>
-                </TransformGroup>
-            </Image.LayoutTransform>
-        </Image>
-
+        <Image x:Name="image" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" SizeChanged="Image_SizeChanged" />
     </Grid>
 </Window>
