@@ -48,50 +48,26 @@ typedef struct
 }
 Matrix4x4;
 
-typedef struct
+float2 ToFloat2(float x, float y)
 {
-    float x;
-    float y;
-}
-Vector2;
-
-typedef struct
-{
-    float x;
-    float y;
-    float z;
-}
-Vector3;
-
-typedef struct
-{
-    float x;
-    float y;
-    float z;
-    float w;
-}
-Vector4;
-
-Vector2 ToVector2(float x, float y)
-{
-    Vector2 ret;
+    float2 ret;
     ret.x = x;
     ret.y = y;
     return ret;
 }
 
-Vector3 ToVector3(float x, float y, float z)
+float3 ToFloat3(float x, float y, float z)
 {
-    Vector3 ret;
+    float3 ret;
     ret.x = x;
     ret.y = y;
     ret.z = z;
     return ret;
 }
 
-Vector4 ToVector4(float x, float y, float z, float w)
+float4 ToFloat4(float x, float y, float z, float w)
 {
-    Vector4 ret;
+    float4 ret;
     ret.x = x;
     ret.y = y;
     ret.z = z;
@@ -99,72 +75,30 @@ Vector4 ToVector4(float x, float y, float z, float w)
     return ret;
 }
 
-float Vector3_Dot(Vector3 a, Vector3 b)
+
+
+float4 Mult_Matrix4x4Float3(Matrix4x4 T, float3 v, float w)
 {
-    return (a.x * b.x + a.y * b.y + a.z * b.z);
-}
+    float4 ret;
 
-float Vector4_Dot(Vector4 a, Vector4 b)
-{
-    return (a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
-}
+    float4 v1 = ToFloat4(v.x, v.y, v.z, w);
 
-Vector2 Vector2_Add(Vector2 a, Vector2 b)
-{
-    Vector2 ret;
-    ret.x = a.x + b.x;
-    ret.y = a.y + b.y;
-    return ret;
-}
-
-Vector2 Vector2_Sub(Vector2 a, Vector2 b)
-{
-    Vector2 ret;
-    ret.x = a.x - b.x;
-    ret.y = a.y - b.y;
-    return ret;
-}
-
-Vector3 Vector3_Add(Vector3 a, Vector3 b)
-{
-    Vector3 ret;
-    ret.x = a.x + b.x;
-    ret.y = a.y + b.y;
-    ret.z = a.z + b.z;
-    return ret;
-}
-
-Vector3 Vector3_Sub(Vector3 a, Vector3 b)
-{
-    Vector3 ret;
-    ret.x = a.x - b.x;
-    ret.y = a.y - b.y;
-    ret.z = a.z - b.z;
-    return ret;
-}
-
-Vector4 Mult_Matrix4x4Vector3(Matrix4x4 T, Vector3 v, float w)
-{
-    Vector4 ret;
-
-    Vector4 v1 = ToVector4(v.x, v.y, v.z, w);
-
-    ret.x = Vector4_Dot(ToVector4(T.m11, T.m12, T.m13, T.m14), v1);
-    ret.y = Vector4_Dot(ToVector4(T.m21, T.m22, T.m23, T.m24), v1);
-    ret.z = Vector4_Dot(ToVector4(T.m31, T.m32, T.m33, T.m34), v1);
-    ret.w = Vector4_Dot(ToVector4(T.m41, T.m42, T.m43, T.m44), v1);
+    ret.x = dot(ToFloat4(T.m11, T.m12, T.m13, T.m14), v1);
+    ret.y = dot(ToFloat4(T.m21, T.m22, T.m23, T.m24), v1);
+    ret.z = dot(ToFloat4(T.m31, T.m32, T.m33, T.m34), v1);
+    ret.w = dot(ToFloat4(T.m41, T.m42, T.m43, T.m44), v1);
 
     return ret;
 }
 
-Vector4 Mult_Matrix4x4Vector4(Matrix4x4 T, Vector4 v)
+float4 Mult_Matrix4x4Float4(Matrix4x4 T, float4 v)
 {
-    Vector4 ret;
+    float4 ret;
 
-    ret.x = Vector4_Dot(ToVector4(T.m11, T.m12, T.m13, T.m14), v);
-    ret.y = Vector4_Dot(ToVector4(T.m21, T.m22, T.m23, T.m24), v);
-    ret.z = Vector4_Dot(ToVector4(T.m31, T.m32, T.m33, T.m34), v);
-    ret.w = Vector4_Dot(ToVector4(T.m41, T.m42, T.m43, T.m44), v);
+    ret.x = dot(ToFloat4(T.m11, T.m12, T.m13, T.m14), v);
+    ret.y = dot(ToFloat4(T.m21, T.m22, T.m23, T.m24), v);
+    ret.z = dot(ToFloat4(T.m31, T.m32, T.m33, T.m34), v);
+    ret.w = dot(ToFloat4(T.m41, T.m42, T.m43, T.m44), v);
 
     return ret;
 }
@@ -173,35 +107,35 @@ Matrix4x4 Mult_Matrix4x4Matrix4x4(Matrix4x4 T2, Matrix4x4 T1)
 {
     Matrix4x4 ret;
 
-    Vector4 T1row1 = ToVector4(T1.m11, T1.m12, T1.m13, T1.m14);
-    Vector4 T1row2 = ToVector4(T1.m21, T1.m22, T1.m23, T1.m24);
-    Vector4 T1row3 = ToVector4(T1.m31, T1.m32, T1.m33, T1.m34);
-    Vector4 T1row4 = ToVector4(T1.m41, T1.m42, T1.m43, T1.m44);
+    float4 T1row1 = ToFloat4(T1.m11, T1.m12, T1.m13, T1.m14);
+    float4 T1row2 = ToFloat4(T1.m21, T1.m22, T1.m23, T1.m24);
+    float4 T1row3 = ToFloat4(T1.m31, T1.m32, T1.m33, T1.m34);
+    float4 T1row4 = ToFloat4(T1.m41, T1.m42, T1.m43, T1.m44);
 
-    Vector4 T2column1 = ToVector4(T2.m11, T2.m21, T2.m31, T2.m41);
-    Vector4 T2column2 = ToVector4(T2.m12, T2.m22, T2.m32, T2.m42);
-    Vector4 T2column3 = ToVector4(T2.m13, T2.m23, T2.m33, T2.m43);
-    Vector4 T2column4 = ToVector4(T2.m14, T2.m24, T2.m34, T2.m44);
+    float4 T2column1 = ToFloat4(T2.m11, T2.m21, T2.m31, T2.m41);
+    float4 T2column2 = ToFloat4(T2.m12, T2.m22, T2.m32, T2.m42);
+    float4 T2column3 = ToFloat4(T2.m13, T2.m23, T2.m33, T2.m43);
+    float4 T2column4 = ToFloat4(T2.m14, T2.m24, T2.m34, T2.m44);
 
-    float m11 = Vector4_Dot(T1row1, T2column1);
-    float m12 = Vector4_Dot(T1row1, T2column2);
-    float m13 = Vector4_Dot(T1row1, T2column3);
-    float m14 = Vector4_Dot(T1row1, T2column4);
+    float m11 = dot(T1row1, T2column1);
+    float m12 = dot(T1row1, T2column2);
+    float m13 = dot(T1row1, T2column3);
+    float m14 = dot(T1row1, T2column4);
                 
-    float m21 = Vector4_Dot(T1row2, T2column1);
-    float m22 = Vector4_Dot(T1row2, T2column2);
-    float m23 = Vector4_Dot(T1row2, T2column3);
-    float m24 = Vector4_Dot(T1row2, T2column4);
+    float m21 = dot(T1row2, T2column1);
+    float m22 = dot(T1row2, T2column2);
+    float m23 = dot(T1row2, T2column3);
+    float m24 = dot(T1row2, T2column4);
                 
-    float m31 = Vector4_Dot(T1row3, T2column1);
-    float m32 = Vector4_Dot(T1row3, T2column2);
-    float m33 = Vector4_Dot(T1row3, T2column3);
-    float m34 = Vector4_Dot(T1row3, T2column4);
+    float m31 = dot(T1row3, T2column1);
+    float m32 = dot(T1row3, T2column2);
+    float m33 = dot(T1row3, T2column3);
+    float m34 = dot(T1row3, T2column4);
                 
-    float m41 = Vector4_Dot(T1row4, T2column1);
-    float m42 = Vector4_Dot(T1row4, T2column2);
-    float m43 = Vector4_Dot(T1row4, T2column3);
-    float m44 = Vector4_Dot(T1row4, T2column4);
+    float m41 = dot(T1row4, T2column1);
+    float m42 = dot(T1row4, T2column2);
+    float m43 = dot(T1row4, T2column3);
+    float m44 = dot(T1row4, T2column4);
 
     ret.m11 = m11;
     ret.m12 = m12;
@@ -383,11 +317,11 @@ Ray;
 
 typedef struct
 {
-    Vector3 pos;
-    Vector3 normal;
+    float3 pos;
+    float3 normal;
     float t;
     int materialId;
-    Vector2 uv;
+    float2 uv;
     int isCollision;
 }
 Hit;
@@ -486,51 +420,39 @@ typedef struct
 }
 Color;
 
-float Min(float a, float b)
-{
-    if (a < b) { return a; }
-    return b;
-}
-
-float Max(float a, float b)
-{
-    if (a > b) { return a; }
-    return b;
-}
-
 BBox GenBBox_Tri(Triangle tri)
 {
     float fMinX = +10000000.0f;
     float fMinY = +10000000.0f;
     float fMinZ = +10000000.0f;
 
-    fMinX = Min(fMinX, tri.a.vx);
-    fMinX = Min(fMinX, tri.b.vx);
-    fMinX = Min(fMinX, tri.c.vx);
+    fMinX = min(fMinX, tri.a.vx);
+    fMinX = min(fMinX, tri.b.vx);
+    fMinX = min(fMinX, tri.c.vx);
 
-    fMinY = Min(fMinY, tri.a.vy);
-    fMinY = Min(fMinY, tri.b.vy);
-    fMinY = Min(fMinY, tri.c.vy);
+    fMinY = min(fMinY, tri.a.vy);
+    fMinY = min(fMinY, tri.b.vy);
+    fMinY = min(fMinY, tri.c.vy);
     
-    fMinZ = Min(fMinZ, tri.a.vz);
-    fMinZ = Min(fMinZ, tri.b.vz);
-    fMinZ = Min(fMinZ, tri.c.vz);
+    fMinZ = min(fMinZ, tri.a.vz);
+    fMinZ = min(fMinZ, tri.b.vz);
+    fMinZ = min(fMinZ, tri.c.vz);
     
     float fMaxX = -10000000.0f;
     float fMaxY = -10000000.0f;
     float fMaxZ = -10000000.0f;
 
-    fMaxX = Max(fMaxX, tri.a.vx);
-    fMaxX = Max(fMaxX, tri.b.vx);
-    fMaxX = Max(fMaxX, tri.c.vx);
+    fMaxX = max(fMaxX, tri.a.vx);
+    fMaxX = max(fMaxX, tri.b.vx);
+    fMaxX = max(fMaxX, tri.c.vx);
     
-    fMaxY = Max(fMaxY, tri.a.vy);
-    fMaxY = Max(fMaxY, tri.b.vy);
-    fMaxY = Max(fMaxY, tri.c.vy);
+    fMaxY = max(fMaxY, tri.a.vy);
+    fMaxY = max(fMaxY, tri.b.vy);
+    fMaxY = max(fMaxY, tri.c.vy);
     
-    fMaxZ = Max(fMaxZ, tri.a.vz);
-    fMaxZ = Max(fMaxZ, tri.b.vz);
-    fMaxZ = Max(fMaxZ, tri.c.vz);
+    fMaxZ = max(fMaxZ, tri.a.vz);
+    fMaxZ = max(fMaxZ, tri.b.vz);
+    fMaxZ = max(fMaxZ, tri.c.vz);
     
     BBox bbox;
     bbox.minx = fMinX;
@@ -549,39 +471,39 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     float fMinY = +10000000.0f;
     float fMinZ = +10000000.0f;
 
-    fMinX = Min(fMinX, bbox1.minx);
-    fMinX = Min(fMinX, bbox1.maxx);
-    fMinX = Min(fMinX, bbox2.minx);
-    fMinX = Min(fMinX, bbox2.maxx);
+    fMinX = min(fMinX, bbox1.minx);
+    fMinX = min(fMinX, bbox1.maxx);
+    fMinX = min(fMinX, bbox2.minx);
+    fMinX = min(fMinX, bbox2.maxx);
 
-    fMinY = Min(fMinY, bbox1.miny);
-    fMinY = Min(fMinY, bbox1.maxy);
-    fMinY = Min(fMinY, bbox2.miny);
-    fMinY = Min(fMinY, bbox2.maxy);
+    fMinY = min(fMinY, bbox1.miny);
+    fMinY = min(fMinY, bbox1.maxy);
+    fMinY = min(fMinY, bbox2.miny);
+    fMinY = min(fMinY, bbox2.maxy);
 
-    fMinZ = Min(fMinZ, bbox1.minz);
-    fMinZ = Min(fMinZ, bbox1.maxz);
-    fMinZ = Min(fMinZ, bbox2.minz);
-    fMinZ = Min(fMinZ, bbox2.maxz);
+    fMinZ = min(fMinZ, bbox1.minz);
+    fMinZ = min(fMinZ, bbox1.maxz);
+    fMinZ = min(fMinZ, bbox2.minz);
+    fMinZ = min(fMinZ, bbox2.maxz);
 
     float fMaxX = -10000000.0f;
     float fMaxY = -10000000.0f;
     float fMaxZ = -10000000.0f;
 
-    fMaxX = Max(fMaxX, bbox1.minx);
-    fMaxX = Max(fMaxX, bbox1.maxx);
-    fMaxX = Max(fMaxX, bbox2.minx);
-    fMaxX = Max(fMaxX, bbox2.maxx);
+    fMaxX = max(fMaxX, bbox1.minx);
+    fMaxX = max(fMaxX, bbox1.maxx);
+    fMaxX = max(fMaxX, bbox2.minx);
+    fMaxX = max(fMaxX, bbox2.maxx);
 
-    fMaxY = Max(fMaxY, bbox1.miny);
-    fMaxY = Max(fMaxY, bbox1.maxy);
-    fMaxY = Max(fMaxY, bbox2.miny);
-    fMaxY = Max(fMaxY, bbox2.maxy);
+    fMaxY = max(fMaxY, bbox1.miny);
+    fMaxY = max(fMaxY, bbox1.maxy);
+    fMaxY = max(fMaxY, bbox2.miny);
+    fMaxY = max(fMaxY, bbox2.maxy);
 
-    fMaxZ = Max(fMaxZ, bbox1.minz);
-    fMaxZ = Max(fMaxZ, bbox1.maxz);
-    fMaxZ = Max(fMaxZ, bbox2.minz);
-    fMaxZ = Max(fMaxZ, bbox2.maxz);
+    fMaxZ = max(fMaxZ, bbox1.minz);
+    fMaxZ = max(fMaxZ, bbox1.maxz);
+    fMaxZ = max(fMaxZ, bbox2.minz);
+    fMaxZ = max(fMaxZ, bbox2.maxz);
 
     BBox bbox;
     bbox.minx = fMinX;
@@ -594,64 +516,41 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     return bbox;
 }
 
-Vector3 scale4(Vector4 point, float scale)
+float3 scale4(float4 point, float scale)
 {
-	Vector3 ret;
+	float3 ret;
 	ret.x = point.x * scale;
 	ret.y = point.y * scale;
 	ret.z = point.z * scale;
 	return ret;
 }
 
-Vector3 scale3(Vector3 point, float scale)
+float3 scale3(float3 point, float scale)
 {
-	Vector3 ret;
+	float3 ret;
 	ret.x = point.x * scale;
 	ret.y = point.y * scale;
 	ret.z = point.z * scale;
 	return ret;
 }
 
-Vector2 scale2(Vector2 point, float scale)
+float2 scale2(float2 point, float scale)
 {
-	Vector2 ret;
+	float2 ret;
 	ret.x = point.x * scale;
 	ret.y = point.y * scale;
 	return ret;
 }
+
+typedef struct
+{
+    float x;
+    float y;
+    float z;
+}
+Vector3;
 
 " + @m_strVertexShader + @"
-
-Vector3 Cross(Vector3 a, Vector3 b)
-{
-    Vector3 ret;
-    ret.x = a.y * b.z - a.z * b.y;
-    ret.y = a.z * b.x - a.x * b.z;
-    ret.z = a.x * b.y - a.y * b.x;
-    return ret;
-}
-
-float Length_Vector3(Vector3 a)
-{
-    return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-}
-
-float Length_Vector3Vector3(Vector3 a, Vector3 b)
-{
-    Vector3 c;
-    c = Vector3_Sub(a, b);
-    return sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
-}
-
-Vector3 Normalize(Vector3 a)
-{
-    float length = Length_Vector3(a);
-    Vector3 ret;
-    ret.x = a.x / length;
-    ret.y = a.y / length;
-    ret.z = a.z / length;
-    return ret;
-}
 
 __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *inout_BVHNodes)
 {
@@ -675,10 +574,10 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode.triangle.c = VertexShader(inBVHNode.triangle.c, in_Matrices);
 
             // normal
-            Vector3 va = ToVector3(outBVHNode.triangle.a.vx, outBVHNode.triangle.a.vy, outBVHNode.triangle.a.vz);
-            Vector3 vb = ToVector3(outBVHNode.triangle.b.vx, outBVHNode.triangle.b.vy, outBVHNode.triangle.b.vz);
-            Vector3 vc = ToVector3(outBVHNode.triangle.c.vx, outBVHNode.triangle.c.vy, outBVHNode.triangle.c.vz);
-            Vector3 normal = Normalize(Cross( Vector3_Sub(vb, va), Vector3_Sub(vc, va) ));
+            float3 va = ToFloat3(outBVHNode.triangle.a.vx, outBVHNode.triangle.a.vy, outBVHNode.triangle.a.vz);
+            float3 vb = ToFloat3(outBVHNode.triangle.b.vx, outBVHNode.triangle.b.vy, outBVHNode.triangle.b.vz);
+            float3 vc = ToFloat3(outBVHNode.triangle.c.vx, outBVHNode.triangle.c.vy, outBVHNode.triangle.c.vz);
+            float3 normal = normalize(cross( vb - va, vc - va ));
             outBVHNode.triangle.normalx = normal.x;
             outBVHNode.triangle.normaly = normal.y;
             outBVHNode.triangle.normalz = normal.z;
@@ -732,20 +631,20 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
     
     int id = (in_Width * pixely) + pixelx;
 
-    Vector3 pos = ToVector3(in_Pos.x, in_Pos.y, in_Pos.z);
-    Vector3 up = ToVector3(in_Up.x, in_Up.y, in_Up.z);
-    Vector3 dir = ToVector3(in_Dir.x, in_Dir.y, in_Dir.z);
-    Vector3 right = ToVector3(in_Right.x, in_Right.y, in_Right.z);
+    float3 pos   = ToFloat3(in_Pos.x, in_Pos.y, in_Pos.z);
+    float3 up    = ToFloat3(in_Up.x, in_Up.y, in_Up.z);
+    float3 dir   = ToFloat3(in_Dir.x, in_Dir.y, in_Dir.z);
+    float3 right = ToFloat3(in_Right.x, in_Right.y, in_Right.z);
 
     float stepPerPixel = tan(in_Angle) / ((float)in_Height);
 
     int movePixelX = pixelx - (in_Width / 2);
 	int movePixelY = pixely - (in_Height / 2);
 
-    Vector3 moveUp = scale3(up, movePixelY * stepPerPixel);
-    Vector3 moveRight = scale3(right, movePixelX * stepPerPixel);
+    float3 moveUp = scale3(up, movePixelY * stepPerPixel);
+    float3 moveRight = scale3(right, movePixelX * stepPerPixel);
 
-    Vector3 dir2 = Normalize(Vector3_Add(Vector3_Add(dir, moveUp), moveRight));
+    float3 dir2 = normalize(dir + moveUp + moveRight);
 
     Ray ray;
     ray.posx = pos.x;
@@ -759,9 +658,9 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
     inout_Rays[id] = ray;
 }
 
-Vector3 Ray_GetPoint(Ray ray, float t)
+float3 Ray_GetPoint(Ray ray, float t)
 {
-    return ( Vector3_Add(ToVector3(ray.posx, ray.posy, ray.posz), ToVector3(ray.dirx * t, ray.diry * t, ray.dirz * t)) );
+    return ( ToFloat3(ray.posx, ray.posy, ray.posz) + ToFloat3(ray.dirx * t, ray.diry * t, ray.dirz * t) );
 }
 
 Hit Intersect_RayTriangle(Ray ray, Triangle tri)
@@ -769,27 +668,27 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     Hit ret;
     ret.isCollision = 0;
 
-    Vector3 A = ToVector3(tri.a.vx, tri.a.vy, tri.a.vz);
-    Vector3 B = ToVector3(tri.b.vx, tri.b.vy, tri.b.vz);
-    Vector3 C = ToVector3(tri.c.vx, tri.c.vy, tri.c.vz);
-    Vector2 tA = ToVector2(tri.a.tx, tri.a.ty);
-    Vector2 tB = ToVector2(tri.b.tx, tri.b.ty);
-    Vector2 tC = ToVector2(tri.c.tx, tri.c.ty);
-    Vector3 normal = ToVector3(tri.normalx, tri.normaly, tri.normalz);
+    float3 A      = ToFloat3(tri.a.vx, tri.a.vy, tri.a.vz);
+    float3 B      = ToFloat3(tri.b.vx, tri.b.vy, tri.b.vz);
+    float3 C      = ToFloat3(tri.c.vx, tri.c.vy, tri.c.vz);
+    float2 tA     = ToFloat2(tri.a.tx, tri.a.ty);
+    float2 tB     = ToFloat2(tri.b.tx, tri.b.ty);
+    float2 tC     = ToFloat2(tri.c.tx, tri.c.ty);
+    float3 normal = ToFloat3(tri.normalx, tri.normaly, tri.normalz);
 
-    float cost = Vector3_Dot(ToVector3(ray.dirx, ray.diry, ray.dirz), normal);
+    float cost = dot(ToFloat3(ray.dirx, ray.diry, ray.dirz), normal);
 	if (fabs(cost) <= 0.0001f) 
 		return ret;
     
-	float t = Vector3_Dot(Vector3_Sub(A, ToVector3(ray.posx, ray.posy, ray.posz)), normal) / cost;
+	float t = dot(A - ToFloat3(ray.posx, ray.posy, ray.posz), normal) / cost;
 	if(t < 0.0001f) 
 		return ret;
     
-	Vector3 P = Ray_GetPoint(ray, t);
+	float3 P = Ray_GetPoint(ray, t);
     
-	float c1 = Vector3_Dot(Cross(Vector3_Sub(B, A), Vector3_Sub(P, A)), normal);
-	float c2 = Vector3_Dot(Cross(Vector3_Sub(C, B), Vector3_Sub(P, B)), normal);
-	float c3 = Vector3_Dot(Cross(Vector3_Sub(A, C), Vector3_Sub(P, C)), normal);
+	float c1 = dot(cross(B - A, P - A), normal);
+	float c2 = dot(cross(C - B, P - B), normal);
+	float c3 = dot(cross(A - C, P - C), normal);
 	if ( (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)
       /*|| (c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f)*/ )
     {
@@ -800,12 +699,12 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
         ret.materialId = tri.materialId;
 
         // texture coords
-        Vector3 u = Vector3_Sub(B, A);
-        Vector3 v = Vector3_Sub(C, A);
-        Vector3 w = Vector3_Sub(P, A);
-        float denom = ((Vector3_Dot(u, v) * Vector3_Dot(u, v)) - (Vector3_Dot(u, u) * Vector3_Dot(v, v)));
-        float t = ((Vector3_Dot(u, v) * Vector3_Dot(w, u)) - (Vector3_Dot(u, u) * Vector3_Dot(w, v))) / denom;
-        float s = ((Vector3_Dot(u, v) * Vector3_Dot(w, v)) - (Vector3_Dot(v, v) * Vector3_Dot(w, u))) / denom;
+        float3 u = B - A;
+        float3 v = C - A;
+        float3 w = P - A;
+        float denom = ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
+        float t = ((dot(u, v) * dot(w, u)) - (dot(u, u) * dot(w, v))) / denom;
+        float s = ((dot(u, v) * dot(w, v)) - (dot(v, v) * dot(w, u))) / denom;
 
         // repeat texture, on
         while (tA.x < 0.0f) { tA.x += 1.0f; } 
@@ -822,10 +721,10 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
         while (tC.x > 1.0f) { tC.x -= 1.0f; }
         while (tC.y > 1.0f) { tC.y -= 1.0f; }
 
-        Vector2 tu = Vector2_Sub(tB, tA);
-        Vector2 tv = Vector2_Sub(tC, tA);
+        float2 tu = tB - tA;
+        float2 tv = tC - tA;
 
-        Vector2 pixel = Vector2_Add(Vector2_Add(tA, scale2(tu, s)), scale2(tv, t));
+        float2 pixel = tA + scale2(tu, s) + scale2(tv, t);
         ret.uv.x = pixel.x;
         ret.uv.y = pixel.y;
 
@@ -837,17 +736,17 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 
 int Intersect_RayBBox(Ray ray, BBox bbox) 
 {
-    Vector3 lb;
+    float3 lb;
     lb.x = bbox.minx;
     lb.y = bbox.miny;
     lb.z = bbox.minz;
 
-    Vector3 rt;
+    float3 rt;
     rt.x = bbox.maxx;
     rt.y = bbox.maxy;
     rt.z = bbox.maxz;
 
-    Vector3 dirfrac;
+    float3 dirfrac;
     dirfrac.x = 1.0f / ray.dirx;
     dirfrac.y = 1.0f / ray.diry;
     dirfrac.z = 1.0f / ray.dirz;
@@ -859,8 +758,8 @@ int Intersect_RayBBox(Ray ray, BBox bbox)
     float t5 = (lb.z - ray.posz) * dirfrac.z;
     float t6 = (rt.z - ray.posz) * dirfrac.z;
     
-    float tmin = Max(Max(min(t1, t2), Min(t3, t4)), Min(t5, t6));
-    float tmax = Min(Min(max(t1, t2), Max(t3, t4)), Max(t5, t6));
+    float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+    float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
     
     // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
     if (tmax < 0.0f)
@@ -877,7 +776,7 @@ int Intersect_RayBBox(Ray ray, BBox bbox)
     return 1;
 }
 
-void WriteTexture(__global unsigned char *texture, int width, int height, Vector2 pixel, Color color)
+void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, Color color)
 {
     int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
@@ -887,7 +786,7 @@ void WriteTexture(__global unsigned char *texture, int width, int height, Vector
     texture[id + 3] = color.alpha;
 }
 
-Color ReadTexture(__global unsigned char *texture, int width, int height, Vector2 pixel)
+Color ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
 {
     int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
@@ -915,7 +814,7 @@ Color ColorBlending(Color color1, Color color2, float t)
     return ret;
 }
 
-Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, Vector2 uv)
+Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, float2 uv)
 {
     Material material = materials[materialId];
     unsigned int offset = material.diffuseTexture.offset;
@@ -923,7 +822,7 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     int height = material.diffuseTexture.height;
     __global unsigned char *texture = &(textureDatas[offset]);
 
-    Vector2 pixel;
+    float2 pixel;
     pixel.x = ((float)uv.x * (float)width);
     pixel.y = ((float)uv.y * (float)height);
 
@@ -970,7 +869,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     background.green = green;
     background.blue = blue;
     background.alpha = alpha;
-    WriteTexture(out_Texture, in_Width, in_Height, ToVector2(pixelx, pixely), background);
+    WriteTexture(out_Texture, in_Width, in_Height, ToFloat2(pixelx, pixely), background);
 
     for(;true;)
     {

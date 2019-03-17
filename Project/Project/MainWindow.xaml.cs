@@ -80,24 +80,24 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 
     if (1 == in.numMatrices)
     {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
         out.vx = v1.x;
         out.vy = v1.y;
         out.vz = v1.z;
     }
     else if (2 == in.numMatrices)
     {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
-        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        float3 v2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
         out.vx = v1.x + v2.x;
         out.vy = v1.y + v2.y;
         out.vz = v1.z + v2.z;
     }
     else if (3 == in.numMatrices)
     {
-        Vector3 v1 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId1], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
-        Vector3 v2 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId2], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
-        Vector3 v3 = scale4(Mult_Matrix4x4Vector4(in_Matrices[in.matrixId3], ToVector4(in.vx, in.vy, in.vz, 1.0f)), in.weight3);
+        float3 v1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight1);
+        float3 v2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight2);
+        float3 v3 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId3], ToFloat4(in.vx, in.vy, in.vz, 1.0f)), in.weight3);
         out.vx = v1.x + v2.x + v3.x;
         out.vy = v1.y + v2.y + v3.y;
         out.vz = v1.z + v2.z + v3.z;
@@ -112,7 +112,7 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 
 bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
 {
-    Vector3 lightPos;
+    float3 lightPos;
     lightPos.x = 1000.0f;
     lightPos.y = 1000.0f;
     lightPos.z = 1000.0f;
@@ -123,13 +123,13 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
         if (hit.isCollision == 1)
         {
             Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
-            WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), color);
+            WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), color);
 
             Ray newRay;
             newRay.posx = lightPos.x;
             newRay.posy = lightPos.y;
             newRay.posz = lightPos.z;
-            Vector3 dir = Normalize(Vector3_Sub(hit.pos, lightPos));
+            float3 dir = normalize(hit.pos - lightPos);
             newRay.dirx = dir.x;
             newRay.diry = dir.y;
             newRay.dirz = dir.z;
@@ -153,12 +153,12 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
             Hit hit1 = hits->hit[0][0];
             if (hit1.isCollision == 1)
             {
-                float length2 = Length_Vector3Vector3(lightPos, hit2.pos);
-                float length1 = Length_Vector3Vector3(lightPos, hit1.pos);
+                float length2 = length(lightPos - hit2.pos);
+                float length1 = length(lightPos - hit1.pos);
         
                 if ((length2 + 0.005f) < length1)
                 {
-                    Color elapsedColor = ReadTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely));
+                    Color elapsedColor = ReadTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely));
 
                     Color shadow;
                     shadow.red = 0;
@@ -168,7 +168,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
 
                     Color newColor = ColorBlending(elapsedColor, shadow, 0.75f);
 
-                    WriteTexture(out, in_Width, in_Height, ToVector2(pixelx, pixely), newColor);
+                    WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), newColor);
                 }
             }
         }
