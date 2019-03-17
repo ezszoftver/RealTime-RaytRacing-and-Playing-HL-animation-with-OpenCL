@@ -852,6 +852,13 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
+
+    if (pixelx >= in_Width || pixely >= in_Height)
+    {
+        return;
+    }
+
+
     int id = (in_Width * pixely) + pixelx;
 
     Rays rays;
