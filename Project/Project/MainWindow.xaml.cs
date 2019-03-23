@@ -300,12 +300,12 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 mtxMutex.WaitOne();
 
                 // HL1
-                //smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
-                //smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
+                smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
+                smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
 
                 // HL2
-                smd.LoadReference(@strDirectory, @"Antlion_guard_reference.smd", mesh);
-                smd.AddAnimation(@strDirectory, @"Antlion_idle.smd", "Anim1", 30.0f);
+                //smd.LoadReference(@strDirectory, @"Antlion_guard_reference.smd", mesh);
+                //smd.AddAnimation(@strDirectory, @"Antlion_idle.smd", "Anim1", 30.0f);
 
                 smd.SetAnimation("Anim1");
 
@@ -505,7 +505,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
 
             m_fFullTime += m_fDeltaTime;
             float fSpeed = 0.5f;
-            m_Scene.SetCamera(new Vector3(-400.0f * (float)Math.Cos(m_fFullTime * fSpeed), 150, -400.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
+            m_Scene.SetCamera(new Vector3(-40.0f * (float)Math.Cos(m_fFullTime * fSpeed), 20, -40.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
             m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
