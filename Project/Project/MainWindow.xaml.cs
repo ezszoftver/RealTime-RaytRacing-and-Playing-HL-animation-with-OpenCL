@@ -122,7 +122,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
         Hit hit = hits->hit[hits->id][0];
         if (hit.isCollision == 1)
         {
-            Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.uv);
+            Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.st);
             WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), color);
 
             Ray newRay;

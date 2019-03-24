@@ -24,7 +24,7 @@ namespace OpenCLRenderer
         {
             return
 @"
-#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+//#pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
 typedef struct
 {
@@ -76,8 +76,6 @@ float4 ToFloat4(float x, float y, float z, float w)
     ret.w = w;
     return ret;
 }
-
-
 
 float4 Mult_Matrix4x4Float3(Matrix4x4 T, float3 v, float w)
 {
@@ -162,149 +160,6 @@ Matrix4x4 Mult_Matrix4x4Matrix4x4(Matrix4x4 T2, Matrix4x4 T1)
     return ret;
 }
 
-Matrix4x4 Inverse_Matrix4x4(Matrix4x4 T)
-{
-    float m[16] = 
-        {  
-            T.m11, T.m12, T.m13, T.m14,
-            T.m21, T.m22, T.m23, T.m24,
-            T.m31, T.m32, T.m33, T.m34,
-            T.m41, T.m42, T.m43, T.m44
-        };
-
-    float inv[16], det;
-    int i;
-
-    inv[0] = m[5]  * m[10] * m[15] - 
-             m[5]  * m[11] * m[14] - 
-             m[9]  * m[6]  * m[15] + 
-             m[9]  * m[7]  * m[14] +
-             m[13] * m[6]  * m[11] - 
-             m[13] * m[7]  * m[10];
-
-    inv[4] = -m[4]  * m[10] * m[15] + 
-              m[4]  * m[11] * m[14] + 
-              m[8]  * m[6]  * m[15] - 
-              m[8]  * m[7]  * m[14] - 
-              m[12] * m[6]  * m[11] + 
-              m[12] * m[7]  * m[10];
-
-    inv[8] = m[4]  * m[9] * m[15] - 
-             m[4]  * m[11] * m[13] - 
-             m[8]  * m[5] * m[15] + 
-             m[8]  * m[7] * m[13] + 
-             m[12] * m[5] * m[11] - 
-             m[12] * m[7] * m[9];
-
-    inv[12] = -m[4]  * m[9] * m[14] + 
-               m[4]  * m[10] * m[13] +
-               m[8]  * m[5] * m[14] - 
-               m[8]  * m[6] * m[13] - 
-               m[12] * m[5] * m[10] + 
-               m[12] * m[6] * m[9];
-
-    inv[1] = -m[1]  * m[10] * m[15] + 
-              m[1]  * m[11] * m[14] + 
-              m[9]  * m[2] * m[15] - 
-              m[9]  * m[3] * m[14] - 
-              m[13] * m[2] * m[11] + 
-              m[13] * m[3] * m[10];
-
-    inv[5] = m[0]  * m[10] * m[15] - 
-             m[0]  * m[11] * m[14] - 
-             m[8]  * m[2] * m[15] + 
-             m[8]  * m[3] * m[14] + 
-             m[12] * m[2] * m[11] - 
-             m[12] * m[3] * m[10];
-
-    inv[9] = -m[0]  * m[9] * m[15] + 
-              m[0]  * m[11] * m[13] + 
-              m[8]  * m[1] * m[15] - 
-              m[8]  * m[3] * m[13] - 
-              m[12] * m[1] * m[11] + 
-              m[12] * m[3] * m[9];
-
-    inv[13] = m[0]  * m[9] * m[14] - 
-              m[0]  * m[10] * m[13] - 
-              m[8]  * m[1] * m[14] + 
-              m[8]  * m[2] * m[13] + 
-              m[12] * m[1] * m[10] - 
-              m[12] * m[2] * m[9];
-
-    inv[2] = m[1]  * m[6] * m[15] - 
-             m[1]  * m[7] * m[14] - 
-             m[5]  * m[2] * m[15] + 
-             m[5]  * m[3] * m[14] + 
-             m[13] * m[2] * m[7] - 
-             m[13] * m[3] * m[6];
-
-    inv[6] = -m[0]  * m[6] * m[15] + 
-              m[0]  * m[7] * m[14] + 
-              m[4]  * m[2] * m[15] - 
-              m[4]  * m[3] * m[14] - 
-              m[12] * m[2] * m[7] + 
-              m[12] * m[3] * m[6];
-
-    inv[10] = m[0]  * m[5] * m[15] - 
-              m[0]  * m[7] * m[13] - 
-              m[4]  * m[1] * m[15] + 
-              m[4]  * m[3] * m[13] + 
-              m[12] * m[1] * m[7] - 
-              m[12] * m[3] * m[5];
-
-    inv[14] = -m[0]  * m[5] * m[14] + 
-               m[0]  * m[6] * m[13] + 
-               m[4]  * m[1] * m[14] - 
-               m[4]  * m[2] * m[13] - 
-               m[12] * m[1] * m[6] + 
-               m[12] * m[2] * m[5];
-
-    inv[3] = -m[1] * m[6] * m[11] + 
-              m[1] * m[7] * m[10] + 
-              m[5] * m[2] * m[11] - 
-              m[5] * m[3] * m[10] - 
-              m[9] * m[2] * m[7] + 
-              m[9] * m[3] * m[6];
-
-    inv[7] = m[0] * m[6] * m[11] - 
-             m[0] * m[7] * m[10] - 
-             m[4] * m[2] * m[11] + 
-             m[4] * m[3] * m[10] + 
-             m[8] * m[2] * m[7] - 
-             m[8] * m[3] * m[6];
-
-    inv[11] = -m[0] * m[5] * m[11] + 
-               m[0] * m[7] * m[9] + 
-               m[4] * m[1] * m[11] - 
-               m[4] * m[3] * m[9] - 
-               m[8] * m[1] * m[7] + 
-               m[8] * m[3] * m[5];
-
-    inv[15] = m[0] * m[5] * m[10] - 
-              m[0] * m[6] * m[9] - 
-              m[4] * m[1] * m[10] + 
-              m[4] * m[2] * m[9] + 
-              m[8] * m[1] * m[6] - 
-              m[8] * m[2] * m[5];
-
-    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-
-    det = 1.0f / det;
-
-    float invOut[16];
-    for (i = 0; i < 16; i++)
-        invOut[i] = inv[i] * det;
-
-    Matrix4x4 ret;
-
-    ret.m11 = invOut[0];  ret.m12 = invOut[1];  ret.m13 = invOut[2];  ret.m14 = invOut[3];
-    ret.m21 = invOut[4];  ret.m22 = invOut[5];  ret.m23 = invOut[6];  ret.m24 = invOut[7];
-    ret.m31 = invOut[8];  ret.m32 = invOut[9];  ret.m33 = invOut[10]; ret.m34 = invOut[11];
-    ret.m41 = invOut[12]; ret.m42 = invOut[13]; ret.m43 = invOut[14]; ret.m44 = invOut[15];
-
-    return ret;
-}
-
 typedef struct
 {
     float posx;
@@ -323,7 +178,7 @@ typedef struct
     float3 normal;
     float t;
     int materialId;
-    float2 uv;
+    float2 st;
     int isCollision;
 }
 Hit;
@@ -667,9 +522,10 @@ float3 Ray_GetPoint(Ray ray, float t)
 
 Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 {
+
     Hit ret;
     ret.isCollision = 0;
-
+    
     float3 A      = ToFloat3(tri.a.vx, tri.a.vy, tri.a.vz);
     float3 B      = ToFloat3(tri.b.vx, tri.b.vy, tri.b.vz);
     float3 C      = ToFloat3(tri.c.vx, tri.c.vy, tri.c.vz);
@@ -677,63 +533,56 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     float2 tB     = ToFloat2(tri.b.tx, tri.b.ty);
     float2 tC     = ToFloat2(tri.c.tx, tri.c.ty);
     float3 normal = ToFloat3(tri.normalx, tri.normaly, tri.normalz);
-
+    
     float cost = dot(ToFloat3(ray.dirx, ray.diry, ray.dirz), normal);
-	if (fabs(cost) <= 0.0001f) 
+	if (fabs(cost) <= 0.001f) 
 		return ret;
     
 	float t = dot(A - ToFloat3(ray.posx, ray.posy, ray.posz), normal) / cost;
-	if(t < 0.0001f) 
+	if(t < 0.001f) 
 		return ret;
     
 	float3 P = Ray_GetPoint(ray, t);
     
-	float c1 = dot(cross(B - A, P - A), normal);
-	float c2 = dot(cross(C - B, P - B), normal);
-	float c3 = dot(cross(A - C, P - C), normal);
-	if ( (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)
-      /*|| (c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f)*/ )
-    {
-		ret.isCollision = 1;
-        ret.pos = P;
-        ret.normal = normal;
-        ret.t = t;
-        ret.materialId = tri.materialId;
+	float c1 = dot(cross(B - A, P - A), normal); if (c1 < 0.0f) return ret;
+	float c2 = dot(cross(C - B, P - B), normal); if (c2 < 0.0f) return ret;
+	float c3 = dot(cross(A - C, P - C), normal); if (c3 < 0.0f) return ret;
 
-        // texture coords
-        float3 u = B - A;
-        float3 v = C - A;
-        float3 w = P - A;
-        float denom = ((dot(u, v) * dot(u, v)) - (dot(u, u) * dot(v, v)));
-        float t = ((dot(u, v) * dot(w, u)) - (dot(u, u) * dot(w, v))) / denom;
-        float s = ((dot(u, v) * dot(w, v)) - (dot(v, v) * dot(w, u))) / denom;
+    float full_area = length(cross((B - A), (C - A)));
 
-        // repeat texture, on
-        while (tA.x < 0.0f) { tA.x += 1.0f; } 
-        while (tA.y < 0.0f) { tA.y += 1.0f; } 
-        while (tB.x < 0.0f) { tB.x += 1.0f; } 
-        while (tB.y < 0.0f) { tB.y += 1.0f; } 
-        while (tC.x < 0.0f) { tC.x += 1.0f; } 
-        while (tC.y < 0.0f) { tC.y += 1.0f; } 
+    float3 edge1 = C - B; 
+    float3 vp1 = P - B; 
+    float area = length(cross(edge1, vp1)); 
+    float u = area / full_area;
 
-        while (tA.x > 1.0f) { tA.x -= 1.0f; }
-        while (tA.y > 1.0f) { tA.y -= 1.0f; }
-        while (tB.x > 1.0f) { tB.x -= 1.0f; }
-        while (tB.y > 1.0f) { tB.y -= 1.0f; }
-        while (tC.x > 1.0f) { tC.x -= 1.0f; }
-        while (tC.y > 1.0f) { tC.y -= 1.0f; }
+    float3 edge2 = A - C;
+    float3 vp2 = P - C; 
+    area = length(cross(edge2, vp2)); 
+    float v = area / full_area;
 
-        float2 tu = tB - tA;
-        float2 tv = tC - tA;
+    // repeat texture, on
+    while (tA.x < 0.0f) { tA.x += 1.0f; } 
+    while (tA.y < 0.0f) { tA.y += 1.0f; } 
+    while (tB.x < 0.0f) { tB.x += 1.0f; } 
+    while (tB.y < 0.0f) { tB.y += 1.0f; } 
+    while (tC.x < 0.0f) { tC.x += 1.0f; } 
+    while (tC.y < 0.0f) { tC.y += 1.0f; } 
+    
+    while (tA.x > 1.0f) { tA.x -= 1.0f; }
+    while (tA.y > 1.0f) { tA.y -= 1.0f; }
+    while (tB.x > 1.0f) { tB.x -= 1.0f; }
+    while (tB.y > 1.0f) { tB.y -= 1.0f; }
+    while (tC.x > 1.0f) { tC.x -= 1.0f; }
+    while (tC.y > 1.0f) { tC.y -= 1.0f; }
 
-        float2 pixel = tA + scale2(tu, s) + scale2(tv, t);
-        ret.uv.x = pixel.x;
-        ret.uv.y = pixel.y;
+    ret.isCollision = 1;
+    ret.pos = P;
+    ret.normal = normal;
+    ret.t = t;
+    ret.materialId = tri.materialId;
+    ret.st = (u * tA) + (v * tB) + ((1 - u - v) * tC);
 
-        return ret;
-    }
-		
-	return ret;
+    return ret;
 }
 
 int Intersect_RayBBox(Ray ray, BBox bbox) 
@@ -816,7 +665,7 @@ Color ColorBlending(Color color1, Color color2, float t)
     return ret;
 }
 
-Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, float2 uv)
+Color Tex2DDiffuse(__global Material *materials, __global unsigned char *textureDatas, int materialId, float2 st)
 {
     Material material = materials[materialId];
     unsigned int offset = material.diffuseTexture.offset;
@@ -825,8 +674,8 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     __global unsigned char *texture = &(textureDatas[offset]);
 
     float2 pixel;
-    pixel.x = ((float)uv.x * (float)width);
-    pixel.y = ((float)uv.y * (float)height);
+    pixel.x = ((float)st.x * (float)width);
+    pixel.y = ((float)st.y * (float)height);
 
     Color ret = ReadTexture(texture, width, height, pixel);
     return ret;
