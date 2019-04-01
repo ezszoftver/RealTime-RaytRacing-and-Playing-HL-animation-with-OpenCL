@@ -212,6 +212,7 @@ typedef struct
     float normalx;
     float normaly;
     float normalz;
+    float area;
 }
 Triangle;
 
@@ -438,6 +439,8 @@ __kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global 
             outBVHNode.triangle.normalx = normal.x;
             outBVHNode.triangle.normaly = normal.y;
             outBVHNode.triangle.normalz = normal.z;
+            // area
+            outBVHNode.triangle.area = length(cross((vb - va), (vc - va)));
 
             // level 1
             outBVHNode.bbox = GenBBox_Tri(outBVHNode.triangle);
@@ -548,17 +551,15 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 	float c2 = dot(cross(C - B, P - B), normal); if (c2 < 0.0f) return ret;
 	float c3 = dot(cross(A - C, P - C), normal); if (c3 < 0.0f) return ret;
 
-    float full_area = length(cross((B - A), (C - A)));
-
     float3 edge1 = C - B; 
     float3 vp1 = P - B; 
     float area = length(cross(edge1, vp1)); 
-    float u = area / full_area;
+    float u = area / tri.area;
 
     float3 edge2 = A - C;
     float3 vp2 = P - C; 
     area = length(cross(edge2, vp2)); 
-    float v = area / full_area;
+    float v = area / tri.area;
 
     // repeat texture, on
     while (tA.x < 0.0f) { tA.x += 1.0f; } 

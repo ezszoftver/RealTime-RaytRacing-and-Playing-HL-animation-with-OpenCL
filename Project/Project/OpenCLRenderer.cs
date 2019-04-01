@@ -52,6 +52,7 @@ namespace OpenCLRenderer
         public float m_fNormalX;
         public float m_fNormalY;
         public float m_fNormalZ;
+        public float m_fArea;
     }
 
     struct BBox
@@ -645,6 +646,7 @@ namespace OpenCLRenderer
                 newTri.m_fNormalX = normal.X;
                 newTri.m_fNormalY = normal.Y;
                 newTri.m_fNormalZ = normal.Z;
+                newTri.m_fArea = Vector3.Cross(BV - AV, CV - AV).Length;
 
                 newTriangles.Add(newTri);
             }
