@@ -646,7 +646,7 @@ namespace OpenCLRenderer
                 newTri.m_fNormalX = normal.X;
                 newTri.m_fNormalY = normal.Y;
                 newTri.m_fNormalZ = normal.Z;
-                newTri.m_fArea = Vector3.Cross(BV - AV, CV - AV).Length;
+                newTri.m_fArea = Vector3.Cross(BV - AV, CV - AV).Length / 2.0f;
 
                 newTriangles.Add(newTri);
             }
