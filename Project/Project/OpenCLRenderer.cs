@@ -208,6 +208,8 @@ namespace OpenCLRenderer
 
                 newContext.Dispose();
                 newContext = null;
+
+                return ret;
             }
 
             return ret;

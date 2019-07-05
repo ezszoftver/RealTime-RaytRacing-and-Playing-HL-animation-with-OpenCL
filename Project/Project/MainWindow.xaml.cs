@@ -38,14 +38,14 @@ namespace Project
             List<string> listDevices = m_Scene.GetDevices();
             m_Scene.Dispose();
             m_Scene = null;
-
+            
             ContextMenu contextMenu = new ContextMenu();
             foreach (string strDevice in listDevices)
             {
                 MenuItem item = new MenuItem();
                 item.Header = strDevice;
                 item.Click += Item_Click;
-
+            
                 contextMenu.Items.Add(item);
             }
             ContextMenu = contextMenu;
