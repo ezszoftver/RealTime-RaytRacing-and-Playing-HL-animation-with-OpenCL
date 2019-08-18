@@ -685,16 +685,16 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
 typedef struct
 {
     int id;
-    int count[16];
-    Ray ray[16][16];
+    int count[64];
+    Ray ray[6][64];
 }
 Rays;
 
 typedef struct
 {
     int id;
-    int count[16];
-    Hit hit[16][16];
+    int count[64];
+    Hit hit[6][64];
 }
 Hits;
 
