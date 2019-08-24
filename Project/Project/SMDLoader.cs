@@ -180,10 +180,12 @@ namespace Project
                         float weight = 1.0f;
                         // vertex
                         Vector3 v = new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3]));
+                        // normal
+                        Vector3 n = new Vector3(ToFloat(words[4]), ToFloat(words[5]), ToFloat(words[6]));
                         // textcoords
                         Vector2 t = new Vector2(ToFloat(words[7]), ToFloat(words[8]));
 
-                        Mesh.Vertex vertex = new Mesh.Vertex(v, t);
+                        Mesh.Vertex vertex = new Mesh.Vertex(v, n, t);
 
                         // one matrix
                         vertex.AddMatrix(matrix_id, weight);
@@ -199,15 +201,17 @@ namespace Project
 
                         // vertex
                         Vector3 v = new Vector3(ToFloat(words[1]), ToFloat(words[2]), ToFloat(words[3]));
+                        // normal
+                        Vector3 n = new Vector3(ToFloat(words[4]), ToFloat(words[5]), ToFloat(words[6]));
                         // textcoords
                         Vector2 t = new Vector2(ToFloat(words[7]), ToFloat(words[8]));
 
-                        Mesh.Vertex vertex = new Mesh.Vertex(v, t);
+                        Mesh.Vertex vertex = new Mesh.Vertex(v, n, t);
 
                         // many matrix
-                        int n = int.Parse(words[9]);
+                        int num = int.Parse(words[9]);
                         int id = 10;
-                        for (int i = 0; i < n; i++)
+                        for (int i = 0; i < num; i++)
                         {
                             // matrix
                             int matrix_id = int.Parse(words[id++]);
@@ -290,9 +294,9 @@ namespace Project
 
                     // vertex
                     vertex.vertex = new Vector3(new Vector4(vertex.vertex, 1.0f) * inverseTransform);
-            
+
                     // normal
-                    ;
+                    vertex.normal = new Vector3(new Vector4(vertex.normal, 0.0f) * inverseTransform);
                 }
             }
 

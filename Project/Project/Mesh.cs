@@ -24,9 +24,10 @@ namespace Project
 
         public class Vertex
         {
-            public Vertex(Vector3 vertex, Vector2 textcoords)
+            public Vertex(Vector3 vertex, Vector3 normal, Vector2 textcoords)
             {
                 this.vertex = vertex;
+                this.normal = normal;
                 this.textcoords = textcoords;
                 this.matrices = new List<MatrixIdAndWeight>();
             }
@@ -34,6 +35,7 @@ namespace Project
             public Vertex(Vertex b)
             {
                 vertex = new Vector3(b.vertex.X, b.vertex.Y, b.vertex.Z);
+                normal = new Vector3(b.normal.X, b.normal.Y, b.normal.Z);
                 textcoords = new Vector2(b.textcoords.X, b.textcoords.Y);
                 matrices = new List<MatrixIdAndWeight>();
                 foreach (MatrixIdAndWeight b_matrix in b.matrices)
@@ -65,6 +67,7 @@ namespace Project
             }
 
             public Vector3 vertex;
+            public Vector3 normal;
             public Vector2 textcoords;
             public List<MatrixIdAndWeight> matrices;
         }

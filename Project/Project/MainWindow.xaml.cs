@@ -70,7 +70,7 @@ namespace Project
             string strDeviceName = (sender as MenuItem).Header.ToString();
             m_Scene = new OpenCLRenderer.Scene();
 
-            string strVertexShader = 
+            string strVertexShader =
 @"
 Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 {
@@ -84,6 +84,12 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
         out.vx = v1.x;
         out.vy = v1.y;
         out.vz = v1.z;
+
+        float3 n1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight1);
+        float3 n = normalize(n1);
+        out.nx = n.x;
+        out.ny = n.y;
+        out.nz = n.z;
     }
     else if (2 == in.numMatrices)
     {
@@ -92,6 +98,13 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
         out.vx = v1.x + v2.x;
         out.vy = v1.y + v2.y;
         out.vz = v1.z + v2.z;
+
+        float3 n1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight1);
+        float3 n2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight2);
+        float3 n = normalize(n1 + n2);
+        out.nx = n.x;
+        out.ny = n.y;
+        out.nz = n.z;
     }
     else if (3 == in.numMatrices)
     {
@@ -101,6 +114,14 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
         out.vx = v1.x + v2.x + v3.x;
         out.vy = v1.y + v2.y + v3.y;
         out.vz = v1.z + v2.z + v3.z;
+
+        float3 n1 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId1], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight1);
+        float3 n2 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId2], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight2);
+        float3 n3 = scale4(Mult_Matrix4x4Float4(in_Matrices[in.matrixId3], ToFloat4(in.nx, in.ny, in.nz, 0.0f)), in.weight3);
+        float3 n = normalize(n1 + n2 + n3);
+        out.nx = n.x;
+        out.ny = n.y;
+        out.nz = n.z;
     }
 
     return out;
@@ -112,66 +133,127 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
 
 bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
 {
-    float3 lightPos;
-    lightPos.x = 1000.0f;
-    lightPos.y = 1000.0f;
-    lightPos.z = 1000.0f;
+    float3 light1;
+    light1.x = +1000.0f;
+    light1.y = +1000.0f;
+    light1.z = +1000.0f;
+
+    float3 light2;
+    light2.x = -1000.0f;
+    light2.y = +1000.0f;
+    light2.z = +1000.0f;
+
+    float3 light3;
+    light3.x = 0.0f;
+    light3.y = +1000.0f;
+    light3.z = +1000.0f;
     
     if (hits->id == 0)
     {
         Hit hit = hits->hit[hits->id][0];
-        if (hit.isCollision == 1)
-        {
-            Color color = Tex2DDiffuse(materials, textureDatas, hit.materialId, hit.st);
-            WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), color);
+        if (hit.isCollision == 0) { return true; }
 
-            Ray newRay;
-            newRay.posx = lightPos.x;
-            newRay.posy = lightPos.y;
-            newRay.posz = lightPos.z;
-            float3 dir = normalize(hit.pos - lightPos);
-            newRay.dirx = dir.x;
-            newRay.diry = dir.y;
-            newRay.dirz = dir.z;
-            newRay.length = 5000.0f;
-    
-            rays->id = 1;
-            rays->count[rays->id] = 1;
-            rays->ray[rays->id][0] = newRay;
+        Ray newRay1;
+        newRay1.posx = light1.x;
+        newRay1.posy = light1.y;
+        newRay1.posz = light1.z;
+        float3 dir1 = normalize(hit.pos - light1);
+        newRay1.dirx = dir1.x;
+        newRay1.diry = dir1.y;
+        newRay1.dirz = dir1.z;
+        newRay1.length = 5000.0f;
 
-            return false;
-        }
-    
-        return true;
+        Ray newRay2;
+        newRay2.posx = light2.x;
+        newRay2.posy = light2.y;
+        newRay2.posz = light2.z;
+        float3 dir2 = normalize(hit.pos - light2);
+        newRay2.dirx = dir2.x;
+        newRay2.diry = dir2.y;
+        newRay2.dirz = dir2.z;
+        newRay2.length = 5000.0f;
+
+        Ray newRay3;
+        newRay3.posx = light3.x;
+        newRay3.posy = light3.y;
+        newRay3.posz = light3.z;
+        float3 dir3 = normalize(hit.pos - light3);
+        newRay3.dirx = dir3.x;
+        newRay3.diry = dir3.y;
+        newRay3.dirz = dir3.z;
+        newRay3.length = 5000.0f;
+
+        rays->id = 1;
+        rays->count[rays->id] = 3;
+        rays->ray[rays->id][0] = newRay1;
+        rays->ray[rays->id][1] = newRay2;
+        rays->ray[rays->id][2] = newRay3;
+
+        return false;
     }
     
     if (hits->id == 1)
     {
+        Hit hit1 = hits->hit[0][0];
+        if (hit1.isCollision == 0) { return true; }
+
+        float diffuseIntensity = 0.0f;
+
         Hit hit2 = hits->hit[hits->id][0];
         if (hit2.isCollision == 1)
         {
-            Hit hit1 = hits->hit[0][0];
-            if (hit1.isCollision == 1)
+            float length2 = length(light1 - hit2.pos);
+            float length1 = length(light1 - hit1.pos);
+            
+            if ((length2 + 0.005f) > length1)
             {
-                float length2 = length(lightPos - hit2.pos);
-                float length1 = length(lightPos - hit1.pos);
+                float3 dir = normalize(hit1.pos - light1);
+                diffuseIntensity += max(dot(-dir, hit2.normal), 0.0f);// + max(dot(-dir2, hit.normal), 0.0f);
+            }
+        }
+
+        Hit hit3 = hits->hit[hits->id][1];
+        if (hit3.isCollision == 1)
+        {
+            {
+                float length2 = length(light2 - hit3.pos);
+                float length1 = length(light2 - hit1.pos);
         
-                if ((length2 + 0.005f) < length1)
+                if ((length2 + 0.005f) > length1)
                 {
-                    Color elapsedColor = ReadTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely));
-
-                    Color shadow;
-                    shadow.red = 0;
-                    shadow.green = 0;
-                    shadow.blue = 0;
-
-                    Color newColor = ColorBlending(elapsedColor, shadow, 0.75f);
-
-                    WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), newColor);
+                    float3 dir = normalize(hit1.pos - light2);
+                    diffuseIntensity += max(dot(-dir, hit3.normal), 0.0f);
                 }
             }
         }
-    
+
+        Hit hit4 = hits->hit[hits->id][2];
+        if (hit4.isCollision == 1)
+        {
+            {
+                float length2 = length(light3 - hit4.pos);
+                float length1 = length(light3 - hit1.pos);
+        
+                if ((length2 + 0.005f) > length1)
+                {
+                    float3 dir = normalize(hit1.pos - light3);
+                    diffuseIntensity += max(dot(-dir, hit4.normal), 0.0f);
+                }
+            }
+        }
+
+        //diffuseIntensity /= 3.0f;
+
+        Color textureColor = Tex2DDiffuse(materials, textureDatas, hit1.materialId, hit1.st);
+
+        Color diffuseColor;
+        diffuseColor.red   = (int)(((float)textureColor.red  ) * diffuseIntensity);
+        diffuseColor.green = (int)(((float)textureColor.green) * diffuseIntensity);
+        diffuseColor.blue  = (int)(((float)textureColor.blue ) * diffuseIntensity);
+        diffuseColor.alpha = 255;
+
+        WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);
+
         return true;
     }
 
@@ -343,9 +425,9 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                         Vector3 vC = meshVertexC.vertex;
 
                         // none normal vector
-                        Vector3 nA = new Vector3(0, 0, 1);
-                        Vector3 nB = new Vector3(0, 0, 1);
-                        Vector3 nC = new Vector3(0, 0, 1);
+                        Vector3 nA = meshVertexA.normal;
+                        Vector3 nB = meshVertexB.normal;
+                        Vector3 nC = meshVertexC.normal;
 
                         Vector2 tA = meshVertexA.textcoords;
                         Vector2 tB = meshVertexB.textcoords;
@@ -482,7 +564,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
             m_fSec += m_fDeltaTime;
             if (m_fSec >= 1.0f)
             {
-                this.Title = FPS + " FPS";
+                this.Title = "FPS: " + FPS;
                 m_fSec = 0.0f;
                 FPS = 0;
             }

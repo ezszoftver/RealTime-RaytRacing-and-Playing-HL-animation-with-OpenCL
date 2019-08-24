@@ -271,10 +271,10 @@ Material;
 
 typedef struct 
 {
-    unsigned char red;
-    unsigned char green;
-    unsigned char blue;
-    unsigned char alpha;
+    int red;
+    int green;
+    int blue;
+    int alpha;
 }
 Color;
 
@@ -532,9 +532,13 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     float3 A      = ToFloat3(tri.a.vx, tri.a.vy, tri.a.vz);
     float3 B      = ToFloat3(tri.b.vx, tri.b.vy, tri.b.vz);
     float3 C      = ToFloat3(tri.c.vx, tri.c.vy, tri.c.vz);
+    float3 nA     = ToFloat3(tri.a.nx, tri.a.ny, tri.a.nz);
+    float3 nB     = ToFloat3(tri.b.nx, tri.b.ny, tri.b.nz);
+    float3 nC     = ToFloat3(tri.c.nx, tri.c.ny, tri.c.nz);
     float2 tA     = ToFloat2(tri.a.tx, tri.a.ty);
     float2 tB     = ToFloat2(tri.b.tx, tri.b.ty);
     float2 tC     = ToFloat2(tri.c.tx, tri.c.ty);
+
     float3 normal = ToFloat3(tri.normalx, tri.normaly, tri.normalz);
     
     float cost = dot(ToFloat3(ray.dirx, ray.diry, ray.dirz), normal);
@@ -578,7 +582,7 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 
     ret.isCollision = 1;
     ret.pos = P;
-    ret.normal = normal;
+    ret.normal = normalize((u * nA) + (v * nB) + ((1 - u - v) * nC));
     ret.t = t;
     ret.materialId = tri.materialId;
     ret.st = (u * tA) + (v * tB) + ((1 - u - v) * tC);
@@ -632,10 +636,16 @@ void WriteTexture(__global unsigned char *texture, int width, int height, float2
 {
     int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
     
-    texture[id + 0] = color.blue;
-    texture[id + 1] = color.green;
-    texture[id + 2] = color.red;
-    texture[id + 3] = color.alpha;
+    // clip
+    int blue  = color.blue;  if (blue  < 0) { blue  = 0; } else if (blue  > 255) { blue  = 255; }
+    int green = color.green; if (green < 0) { green = 0; } else if (green > 255) { green = 255; }
+    int red   = color.red;   if (red   < 0) { red   = 0; } else if (red   > 255) { red   = 255; }
+    int alpha = color.alpha; if (alpha < 0) { alpha = 0; } else if (alpha > 255) { alpha = 255; }
+
+    texture[id + 0] = blue;
+    texture[id + 1] = green;
+    texture[id + 2] = red;
+    texture[id + 3] = alpha;
 }
 
 Color ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
