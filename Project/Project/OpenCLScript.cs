@@ -566,19 +566,19 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     float v = area / tri.area;
 
     // repeat texture, on
-    while (tA.x < 0.0f) { tA.x += 1.0f; } 
-    while (tA.y < 0.0f) { tA.y += 1.0f; } 
-    while (tB.x < 0.0f) { tB.x += 1.0f; } 
-    while (tB.y < 0.0f) { tB.y += 1.0f; } 
-    while (tC.x < 0.0f) { tC.x += 1.0f; } 
-    while (tC.y < 0.0f) { tC.y += 1.0f; } 
-    
-    while (tA.x > 1.0f) { tA.x -= 1.0f; }
-    while (tA.y > 1.0f) { tA.y -= 1.0f; }
-    while (tB.x > 1.0f) { tB.x -= 1.0f; }
-    while (tB.y > 1.0f) { tB.y -= 1.0f; }
-    while (tC.x > 1.0f) { tC.x -= 1.0f; }
-    while (tC.y > 1.0f) { tC.y -= 1.0f; }
+    //while (tA.x < 0.0f) { tA.x += 1.0f; } 
+    //while (tA.y < 0.0f) { tA.y += 1.0f; } 
+    //while (tB.x < 0.0f) { tB.x += 1.0f; } 
+    //while (tB.y < 0.0f) { tB.y += 1.0f; } 
+    //while (tC.x < 0.0f) { tC.x += 1.0f; } 
+    //while (tC.y < 0.0f) { tC.y += 1.0f; } 
+    //
+    //while (tA.x > 1.0f) { tA.x -= 1.0f; }
+    //while (tA.y > 1.0f) { tA.y -= 1.0f; }
+    //while (tB.x > 1.0f) { tB.x -= 1.0f; }
+    //while (tB.y > 1.0f) { tB.y -= 1.0f; }
+    //while (tC.x > 1.0f) { tC.x -= 1.0f; }
+    //while (tC.y > 1.0f) { tC.y -= 1.0f; }
 
     ret.isCollision = 1;
     ret.pos = P;
@@ -683,6 +683,21 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     int width = material.diffuseTexture.width;
     int height = material.diffuseTexture.height;
     __global unsigned char *texture = &(textureDatas[offset]);
+
+    // repeat on
+    while (st.x < 0.0f) { st.x += 1.0f; } 
+    while (st.y < 0.0f) { st.y += 1.0f; } 
+    while (st.x < 0.0f) { st.x += 1.0f; } 
+    while (st.y < 0.0f) { st.y += 1.0f; } 
+    while (st.x < 0.0f) { st.x += 1.0f; } 
+    while (st.y < 0.0f) { st.y += 1.0f; } 
+    
+    while (st.x > 1.0f) { st.x -= 1.0f; }
+    while (st.y > 1.0f) { st.y -= 1.0f; }
+    while (st.x > 1.0f) { st.x -= 1.0f; }
+    while (st.y > 1.0f) { st.y -= 1.0f; }
+    while (st.x > 1.0f) { st.x -= 1.0f; }
+    while (st.y > 1.0f) { st.y -= 1.0f; }
 
     float2 pixel;
     pixel.x = ((float)st.x * (float)width);

@@ -11,6 +11,7 @@
         Title="" 
         WindowStartupLocation="CenterScreen"
         Closing="Window_Closing"
+        
         >
     <Grid Background="AliceBlue">
         <Label x:Name="labelMessage" Content="Please Right-Click, to choose OpenCL Device" FontSize="30" Foreground="Black" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
