@@ -209,7 +209,7 @@ namespace OpenCLRenderer
                 newContext.Dispose();
                 newContext = null;
 
-                return ret;
+                //return ret;
             }
 
             return ret;
@@ -268,7 +268,7 @@ namespace OpenCLRenderer
                     }
 
                     // VertexShader
-                    kernelVertexShader = m_Program.CreateKernel("Main_VertexShader");
+                    kernelTriangleShader = m_Program.CreateKernel("Main_TriangleShader");
 
                     // RefitTree
                     KernelRefitTree_LevelX = m_Program.CreateKernel("Main_RefitTree_LevelX");
@@ -1049,19 +1049,19 @@ namespace OpenCLRenderer
             m_mtxMutex.ReleaseMutex();
         }
 
-        public void RunVertexShader()
+        public void RunTriangleShader()
         {
             m_mtxMutex.WaitOne();
 
-            kernelVertexShader.SetMemoryArgument(0, clInput_AllBVHNodesType);
-            kernelVertexShader.SetMemoryArgument(1, clInput_AllBVHNodes);
-            kernelVertexShader.SetMemoryArgument(2, clInput_MatricesData);
-            kernelVertexShader.SetMemoryArgument(3, clInputOutput_AllBVHNodes);
+            kernelTriangleShader.SetMemoryArgument(0, clInput_AllBVHNodesType);
+            kernelTriangleShader.SetMemoryArgument(1, clInput_AllBVHNodes);
+            kernelTriangleShader.SetMemoryArgument(2, clInput_MatricesData);
+            kernelTriangleShader.SetMemoryArgument(3, clInputOutput_AllBVHNodes);
 
             int iCount = m_iNumBVHNodes;
 
             ComputeEventList eventList = new ComputeEventList();
-            cmdQueue.Execute(kernelVertexShader, null, new long[] { iCount }, null, eventList);
+            cmdQueue.Execute(kernelTriangleShader, null, new long[] { iCount }, null, eventList);
             cmdQueue.Finish();
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
@@ -1292,7 +1292,7 @@ namespace OpenCLRenderer
             // rendertarget
             if (null != clOutput_TextureBuffer) { clOutput_TextureBuffer.Dispose(); clOutput_TextureBuffer = null; }
             
-            if (null != kernelVertexShader    ) { kernelVertexShader.Dispose(); kernelVertexShader = null; }
+            if (null != kernelTriangleShader  ) { kernelTriangleShader  .Dispose(); kernelTriangleShader   = null; }
             if (null != KernelRefitTree_LevelX) { KernelRefitTree_LevelX.Dispose(); KernelRefitTree_LevelX = null; }
             if (null != KernelCameraRays      ) { KernelCameraRays      .Dispose(); KernelCameraRays       = null; }
             if (null != KernelRayShader       ) { KernelRayShader       .Dispose(); KernelRayShader        = null; }
@@ -1325,7 +1325,7 @@ namespace OpenCLRenderer
         ComputeProgram m_Program;
         ComputeDevice m_Device;
         ComputeCommandQueue cmdQueue;
-        ComputeKernel kernelVertexShader;
+        ComputeKernel kernelTriangleShader;
         ComputeKernel KernelRefitTree_LevelX;
         ComputeKernel KernelCameraRays;
         ComputeKernel KernelRayShader;

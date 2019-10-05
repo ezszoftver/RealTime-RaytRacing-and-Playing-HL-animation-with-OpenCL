@@ -582,7 +582,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
             }
 
             m_Scene.UpdateMatrices();
-            m_Scene.RunVertexShader();
+            m_Scene.RunTriangleShader();
             m_Scene.RunRefitTreeShader();
 
             m_fFullTime += m_fDeltaTime;

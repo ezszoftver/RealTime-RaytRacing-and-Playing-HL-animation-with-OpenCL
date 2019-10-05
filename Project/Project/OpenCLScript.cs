@@ -410,7 +410,7 @@ Vector3;
 
 " + @m_strVertexShader + @"
 
-__kernel void Main_VertexShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *inout_BVHNodes)
+__kernel void Main_TriangleShader(__global BVHNodeType *in_BVHNodeTypes, __global BVHNode *in_BVHNodes, __global Matrix4x4 *in_Matrices, __global BVHNode *inout_BVHNodes)
 {
     int id = get_global_id(0);
 
