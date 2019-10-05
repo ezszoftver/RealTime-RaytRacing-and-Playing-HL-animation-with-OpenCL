@@ -565,21 +565,6 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     area = length(cross(edge2, vp2)) / 2.0f;
     float v = area / tri.area;
 
-    // repeat texture, on
-    //while (tA.x < 0.0f) { tA.x += 1.0f; } 
-    //while (tA.y < 0.0f) { tA.y += 1.0f; } 
-    //while (tB.x < 0.0f) { tB.x += 1.0f; } 
-    //while (tB.y < 0.0f) { tB.y += 1.0f; } 
-    //while (tC.x < 0.0f) { tC.x += 1.0f; } 
-    //while (tC.y < 0.0f) { tC.y += 1.0f; } 
-    //
-    //while (tA.x > 1.0f) { tA.x -= 1.0f; }
-    //while (tA.y > 1.0f) { tA.y -= 1.0f; }
-    //while (tB.x > 1.0f) { tB.x -= 1.0f; }
-    //while (tB.y > 1.0f) { tB.y -= 1.0f; }
-    //while (tC.x > 1.0f) { tC.x -= 1.0f; }
-    //while (tC.y > 1.0f) { tC.y -= 1.0f; }
-
     ret.isCollision = 1;
     ret.pos = P;
     ret.normal = normalize((u * nA) + (v * nB) + ((1 - u - v) * nC));
@@ -687,15 +672,6 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
     // repeat on
     while (st.x < 0.0f) { st.x += 1.0f; } 
     while (st.y < 0.0f) { st.y += 1.0f; } 
-    while (st.x < 0.0f) { st.x += 1.0f; } 
-    while (st.y < 0.0f) { st.y += 1.0f; } 
-    while (st.x < 0.0f) { st.x += 1.0f; } 
-    while (st.y < 0.0f) { st.y += 1.0f; } 
-    
-    while (st.x > 1.0f) { st.x -= 1.0f; }
-    while (st.y > 1.0f) { st.y -= 1.0f; }
-    while (st.x > 1.0f) { st.x -= 1.0f; }
-    while (st.y > 1.0f) { st.y -= 1.0f; }
     while (st.x > 1.0f) { st.x -= 1.0f; }
     while (st.y > 1.0f) { st.y -= 1.0f; }
 
