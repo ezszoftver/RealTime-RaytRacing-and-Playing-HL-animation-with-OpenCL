@@ -149,10 +149,6 @@ bool RayShader(Hits *hits, Rays *rays, Vector3 camPos, Vector3 camAt, __global M
             diffuseColor.green += (int)(((float)reflectionColor.green) * reflectionIntensity);
             diffuseColor.blue  += (int)(((float)reflectionColor.blue ) * reflectionIntensity);
             diffuseColor.alpha = 255;
-
-            WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);
-
-            return true;
         }
 
         WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);

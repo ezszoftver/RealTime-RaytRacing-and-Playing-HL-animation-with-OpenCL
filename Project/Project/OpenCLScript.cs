@@ -495,6 +495,11 @@ __kernel void Main_CameraRays(Vector3 in_Pos, Vector3 in_Up, Vector3 in_Dir, Vec
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
+
+    if (pixelx >= in_Width || pixely >= in_Height)
+    {
+        return;
+    }
     
     int id = (in_Width * pixely) + pixelx;
 

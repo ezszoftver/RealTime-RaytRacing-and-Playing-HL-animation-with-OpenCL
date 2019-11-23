@@ -1073,6 +1073,10 @@ namespace OpenCLRenderer
         {
             //m_mtxMutex.WaitOne();
 
+            ComputeEventList eventList = new ComputeEventList();
+
+            KernelRefitTree_LevelX.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
+
             for (int i = 0; i < listCLInput_RefitTree_LevelX.Count; i++)
             {
                 int iCount = m_listRefitTree_LevelXSizes[i];
@@ -1081,14 +1085,13 @@ namespace OpenCLRenderer
                 ComputeBuffer<BVHNode> clInput_RefitTree_LevelX = listCLInput_RefitTree_LevelX[i];
 
                 KernelRefitTree_LevelX.SetMemoryArgument(0, clInput_RefitTree_LevelX);
-                KernelRefitTree_LevelX.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
                 
-                ComputeEventList eventList = new ComputeEventList();
                 cmdQueue.Execute(KernelRefitTree_LevelX, null, new long[] { iCount }, null, eventList);
-                cmdQueue.Finish();
-                foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
-                eventList.Clear();
             }
+
+            cmdQueue.Finish();
+            foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
+            eventList.Clear();
 
             //m_mtxMutex.ReleaseMutex();
         }
@@ -1144,7 +1147,7 @@ namespace OpenCLRenderer
             KernelCameraRays.SetMemoryArgument(8, clInputOutput_Rays);
 
             ComputeEventList eventList = new ComputeEventList();
-            cmdQueue.Execute(KernelCameraRays, null, new long[] { m_iWidth, m_iHeight }, null, eventList);
+            cmdQueue.Execute(KernelCameraRays, null, new long[] { (m_iWidth + 7) / 8 * 8, (m_iHeight + 7) / 8 * 8 }, new long[] { 8, 8 }, eventList);
             cmdQueue.Finish();
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
