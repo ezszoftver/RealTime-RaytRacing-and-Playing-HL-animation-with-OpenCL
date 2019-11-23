@@ -277,7 +277,7 @@ bool RayShader(Hits *hits, Rays *rays, Vector3 camPos, Vector3 camAt, __global M
         {
             Color reflectionColor = Tex2DDiffuse(materials, textureDatas, hit5.materialId, hit5.st);
 
-            float reflectionIntensity = 0.5;
+            float reflectionIntensity = diffuseIntensity * 0.25;
             diffuseColor.red   += (int)(((float)reflectionColor.red  ) * reflectionIntensity);
             diffuseColor.green += (int)(((float)reflectionColor.green) * reflectionIntensity);
             diffuseColor.blue  += (int)(((float)reflectionColor.blue ) * reflectionIntensity);
