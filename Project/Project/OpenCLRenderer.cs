@@ -254,7 +254,7 @@ namespace OpenCLRenderer
 
                     try
                     {
-                        m_Program.Build(null, "-cl-mad-enable -cl-fast-relaxed-math -cl-std=CL1.2", null, IntPtr.Zero);
+                        m_Program.Build(null, "",  null, IntPtr.Zero);
                     }
                     catch (Exception e)
                     {

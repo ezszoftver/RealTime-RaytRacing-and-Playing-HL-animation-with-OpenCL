@@ -564,21 +564,22 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     
 	float3 P = Ray_GetPoint(ray, t);
     
-	float c1 = dot(cross(B - A, P - A), normal);
-	float c2 = dot(cross(C - B, P - B), normal);
-	float c3 = dot(cross(A - C, P - C), normal);
-
-    if ( false == ((c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f) || (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)) ) { return ret; }
-
     float3 edge1 = C - B; 
     float3 vp1 = P - B; 
-    float area = length(cross(edge1, vp1)) / 2.0f;
-    float u = area / tri.area;
+    float area1 = length(cross(edge1, vp1)) / 2.0f;
+    float u = area1 / tri.area;
 
     float3 edge2 = A - C;
     float3 vp2 = P - C; 
-    area = length(cross(edge2, vp2)) / 2.0f;
-    float v = area / tri.area;
+    float area2 = length(cross(edge2, vp2)) / 2.0f;
+    float v = area2 / tri.area;
+
+    float3 edge3 = B - A;
+    float3 vp3 = P - A; 
+    float area3 = length(cross(edge3, vp3)) / 2.0f;
+    float w = area3 / tri.area;
+
+    if ((u + v + w) > 1.001) { return ret; }
 
     ret.isCollision = 1;
     ret.pos = P;
