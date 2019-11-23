@@ -646,7 +646,7 @@ void WriteTexture(__global unsigned char *texture, int width, int height, float2
 Color ReadTexture(__global unsigned char *texture, int width, int height, float2 pixel)
 {
     int id = (width * (int)pixel.y * 4) + ((int)pixel.x * 4);
-    
+	
     Color color;
     color.blue  = texture[id + 0];
     color.green = texture[id + 1];
