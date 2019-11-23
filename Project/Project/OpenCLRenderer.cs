@@ -272,7 +272,7 @@ namespace OpenCLRenderer
 
                     // RefitTree
                     KernelRefitTree_LevelX = m_Program.CreateKernel("Main_RefitTree_LevelX");
-
+                    
                     // CameraRays
                     KernelCameraRays = m_Program.CreateKernel("Main_CameraRays");
 
@@ -292,9 +292,9 @@ namespace OpenCLRenderer
 
         public int NumMatrices()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             int iRet = m_listMatrices.Count();
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
 
             return iRet;
         }
@@ -302,19 +302,19 @@ namespace OpenCLRenderer
         // Matrix
         public int GenMatrix()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             int iId = m_listMatrices.Count;
 
             Matrix newMatrix = new Matrix();
 
             m_listMatrices.Add(newMatrix);
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
             return iId;
         }
 
         public void SetMatrix(int iId, Matrix4 mMatrix)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             Matrix newMatrix = new Matrix();
 
             Matrix4 transposedMatrix = new Matrix4(mMatrix.Row0, mMatrix.Row1, mMatrix.Row2, mMatrix.Row3);
@@ -341,25 +341,25 @@ namespace OpenCLRenderer
             newMatrix.m44 = transposedMatrix.M44;
 
             m_listMatrices[iId] = newMatrix;
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         // Material
         public int GenMaterial()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             int iId = m_listMaterials.Count;
 
             Material newMaterial = new Material();
 
             m_listMaterials.Add(newMaterial);
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
             return iId;
         }
 
         public void SetMaterial(int iId, string @strDiffuseFileName, string @strSpecularFileName, string @strNormalFileName)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             Material newMaterial = new Material();
 
             newMaterial.m_DiffuseTexture  = CreateTextureFromFile(@strDiffuseFileName);
@@ -367,7 +367,7 @@ namespace OpenCLRenderer
             newMaterial.m_SpecularTexture = CreateTextureFromFile(@strNormalFileName);
 
             m_listMaterials[iId] = newMaterial;
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         Texture CreateTextureFromFile(string @strFileName)
@@ -552,22 +552,22 @@ namespace OpenCLRenderer
 
         public int GenObject()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             int iId = m_listObjects.Count;
             BVHObject newObject = new BVHObject();
             m_listObjects.Add(newObject);
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
 
             return iId;
         }
 
         public void SetObject(int iId, BVHObject bvhObject)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             m_listObjects[iId] = bvhObject;
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public BVHObject CreateStaticObject(List<Triangle> triangles, Matrix4 matTransform)
@@ -656,14 +656,14 @@ namespace OpenCLRenderer
             List<BVHNode> newBVH = CreateBVH(newTriangles);
             newTriangles.Clear();
 
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
             
             BVHObject newObject = new BVHObject();
             newObject.m_iType = (int)BVHObjectType.Static;
             newObject.m_listBVHNodes = newBVH;
             newObject.m_LevelXBVHs = null;
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
 
             return newObject;
         }
@@ -674,14 +674,14 @@ namespace OpenCLRenderer
 
             List< List<BVHNode> > levelXBVH = CopyBVHToLevelX(newBVH);
 
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             BVHObject newObject = new BVHObject();
             newObject.m_iType = (int)BVHObjectType.Dynamic;
             newObject.m_listBVHNodes = newBVH;
             newObject.m_LevelXBVHs = levelXBVH;
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
 
             return newObject;
         }
@@ -935,7 +935,7 @@ namespace OpenCLRenderer
 
         public void Commit()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             List<BVHNode> listAllBVHNodes = new List<BVHNode>();
             List<int> listAllBVHNodesType = new List<int>();
@@ -1033,12 +1033,12 @@ namespace OpenCLRenderer
             }
             listAllLevelXBVHsOffsets.Clear();
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public void UpdateMatrices()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.WriteToBuffer(m_listMatrices.ToArray(), clInput_MatricesData, true, eventList);
@@ -1046,12 +1046,12 @@ namespace OpenCLRenderer
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public void RunTriangleShader()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             kernelTriangleShader.SetMemoryArgument(0, clInput_AllBVHNodesType);
             kernelTriangleShader.SetMemoryArgument(1, clInput_AllBVHNodes);
@@ -1066,12 +1066,12 @@ namespace OpenCLRenderer
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public void RunRefitTreeShader()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             for (int i = 0; i < listCLInput_RefitTree_LevelX.Count; i++)
             {
@@ -1090,20 +1090,29 @@ namespace OpenCLRenderer
                 eventList.Clear();
             }
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
+
+        private Float3 cameraPos = new Float3();
+        private Float3 cameraAt = new Float3();
+        public Float3 GetCameraPos() { return cameraPos; }
+        public Float3 GetCameraAt() { return cameraAt; }
 
         public void SetCamera(Vector3 pos, Vector3 at, Vector3 up, float angle, float zfar)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             // pos
-            Float3 inPos;
-            inPos.m_X = pos.X;
-            inPos.m_Y = pos.Y;
-            inPos.m_Z = pos.Z;
+            cameraPos.m_X = pos.X;
+            cameraPos.m_Y = pos.Y;
+            cameraPos.m_Z = pos.Z;
 
             // at
+            cameraAt.m_X = at.X;
+            cameraAt.m_Y = at.Y;
+            cameraAt.m_Z = at.Z;
+
+            // up
             up = up.Normalized();
             Float3 inUp;
             inUp.m_X = up.X;
@@ -1124,7 +1133,7 @@ namespace OpenCLRenderer
             inRight.m_Y = right.Y;
             inRight.m_Z = right.Z;
 
-            KernelCameraRays.SetValueArgument<Float3>(0, inPos);
+            KernelCameraRays.SetValueArgument<Float3>(0, cameraPos);
             KernelCameraRays.SetValueArgument<Float3>(1, inUp);
             KernelCameraRays.SetValueArgument<Float3>(2, inDir);
             KernelCameraRays.SetValueArgument<Float3>(3, inRight);
@@ -1140,12 +1149,12 @@ namespace OpenCLRenderer
             foreach (ComputeEventBase eventBase in eventList) { eventBase.Dispose(); }
             eventList.Clear();
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public void RunRayShader(byte iRed, byte iGreen, byte iBlue, byte iAlpha)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             KernelRayShader.SetMemoryArgument(0, clInputOutput_Rays);
             KernelRayShader.SetMemoryArgument(1, clInputOutput_AllBVHNodes);
@@ -1160,7 +1169,9 @@ namespace OpenCLRenderer
             KernelRayShader.SetMemoryArgument(10, clInput_Materials);
             KernelRayShader.SetMemoryArgument(11, clInput_TexturesData);
             KernelRayShader.SetMemoryArgument(12, clOutput_TextureBuffer);
-            
+            KernelRayShader.SetValueArgument<Float3>(13, cameraPos);
+            KernelRayShader.SetValueArgument<Float3>(14, cameraAt);
+
             ComputeEventList eventList = new ComputeEventList();
             cmdQueue.Execute(KernelRayShader, null, new long[] { (m_iWidth + 7) / 8 * 8, (m_iHeight + 7) / 8 * 8 }, new long[] { 8, 8 }, eventList);
             cmdQueue.Finish();
@@ -1179,7 +1190,7 @@ namespace OpenCLRenderer
             cmdQueue.Unmap(clOutput_TextureBuffer, ref source, null);
             cmdQueue.Finish();
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
         
         public WriteableBitmap GetWriteableBitmap()
@@ -1234,7 +1245,7 @@ namespace OpenCLRenderer
 
         public void Resize(int iWidth, int iHeight)
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             m_iWidth = iWidth;
             m_iHeight = iHeight;
@@ -1251,12 +1262,12 @@ namespace OpenCLRenderer
 
             writeableBitmap = new WriteableBitmap(iWidth, iHeight, 1, 1, PixelFormats.Bgra32, null);
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         public void Dispose()
         {
-            m_mtxMutex.WaitOne();
+            //m_mtxMutex.WaitOne();
 
             m_listMaterials.Clear();
             m_listTexturesData.Clear();
@@ -1300,7 +1311,7 @@ namespace OpenCLRenderer
             if (null != m_Program             ) { m_Program             .Dispose(); m_Program              = null; }
             if (null != m_Context             ) { m_Context.Dispose();              m_Context              = null; }
 
-            m_mtxMutex.ReleaseMutex();
+            //m_mtxMutex.ReleaseMutex();
         }
 
         enum BVHObjectType
@@ -1309,7 +1320,7 @@ namespace OpenCLRenderer
             Dynamic = 2
         }
 
-        Mutex m_mtxMutex = new Mutex();
+        //Mutex m_mtxMutex = new Mutex();
 
         List<Material> m_listMaterials = new List<Material>();
         List<byte> m_listTexturesData = new List<byte>();

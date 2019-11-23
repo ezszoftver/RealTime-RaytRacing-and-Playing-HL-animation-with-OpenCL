@@ -180,6 +180,7 @@ typedef struct
     int materialId;
     float2 st;
     int isCollision;
+    int objectId;
 }
 Hit;
 
@@ -400,6 +401,12 @@ float2 scale2(float2 point, float scale)
 	return ret;
 }
 
+float3 reflect(float3 dir, float3 n)
+{
+    float3 ret = dir - scale3(n, 2.0 * dot(dir, n));
+    return ret;
+}
+
 typedef struct
 {
     float x;
@@ -528,6 +535,7 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 
     Hit ret;
     ret.isCollision = 0;
+    ret.objectId = -1;
     
     float3 A      = ToFloat3(tri.a.vx, tri.a.vy, tri.a.vz);
     float3 B      = ToFloat3(tri.b.vx, tri.b.vy, tri.b.vz);
@@ -551,9 +559,11 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     
 	float3 P = Ray_GetPoint(ray, t);
     
-	float c1 = dot(cross(B - A, P - A), normal); if (c1 < 0.0f) return ret;
-	float c2 = dot(cross(C - B, P - B), normal); if (c2 < 0.0f) return ret;
-	float c3 = dot(cross(A - C, P - C), normal); if (c3 < 0.0f) return ret;
+	float c1 = dot(cross(B - A, P - A), normal);
+	float c2 = dot(cross(C - B, P - B), normal);
+	float c3 = dot(cross(A - C, P - C), normal);
+
+    if ( false == ((c1 <= 0.0f && c2 <= 0.0f && c3 <= 0.0f) || (c1 >= 0.0f && c2 >= 0.0f && c3 >= 0.0f)) ) { return ret; }
 
     float3 edge1 = C - B; 
     float3 vp1 = P - B; 
@@ -701,7 +711,7 @@ Hits;
 
 " + @m_strRayShader + @"
 
-__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture)
+__kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNodes, __global int *in_BeginObjects, int in_NumBeginObjects, int in_Width, int in_Height, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out_Texture, Vector3 camPos, Vector3 camAt)
 {
     int pixelx = get_global_id(0);
     int pixely = get_global_id(1);
@@ -731,7 +741,9 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
     background.alpha = alpha;
     WriteTexture(out_Texture, in_Width, in_Height, ToFloat2(pixelx, pixely), background);
 
-    for(;true;)
+    bool isEnd = false;
+
+    do
     {
         for(int ray_id = 0; ray_id < rays.count[rays.id]; ray_id++)
         {
@@ -740,7 +752,8 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
             hits.count[rays.id] = rays.count[rays.id];
             hits.hit[rays.id][ray_id].isCollision = 0;
             hits.hit[rays.id][ray_id].t = 1000000.0f;
-
+            hits.hit[rays.id][ray_id].objectId = -1;
+            
             for (int i = 0; i < in_NumBeginObjects; i++)
             {
                 int isSearching = 1;
@@ -753,7 +766,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                 stack[top] = rootId;
                 top++;
             
-                for(;isSearching == 1;)
+                while(isSearching == 1)
                 {
                     top--;
                     if (top < 0) { isSearching = 0; continue; }
@@ -763,6 +776,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                     {
                         // haromszog-ray utkozesvizsgalat
                         Hit hit = Intersect_RayTriangle(ray, temp_node.triangle);
+                        hit.objectId = i;
             
                         if (hit.isCollision == 1)
                         {
@@ -795,11 +809,14 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
             }
         }
 
-        if(true == RayShader(&hits, &rays, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely))
-        {
-            return;
-        }
-    }
+        isEnd = RayShader(&hits, &rays, camPos, camAt, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely);
+
+        //if(true == RayShader(&hits, &rays, materials, textureDatas, out_Texture, in_Width, in_Height, pixelx, pixely))
+        //{
+        //    return;
+        //}
+    } 
+    while(isEnd == false);
 }
 ";
         }

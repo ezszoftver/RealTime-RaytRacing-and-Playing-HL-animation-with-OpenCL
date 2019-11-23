@@ -131,7 +131,7 @@ Vertex VertexShader(Vertex in, __global Matrix4x4 *in_Matrices)
             string @strRayShader =
 @"
 
-bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
+bool RayShader(Hits *hits, Rays *rays, Vector3 camPos, Vector3 camAt, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
 {
     float3 light1;
     light1.x = +1000.0f;
@@ -148,12 +148,17 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
     light3.y = +1000.0f;
     light3.z = +1000.0f;
     
+    float3 cam_pos;
+    cam_pos.x = camPos.x;
+    cam_pos.y = camPos.y;
+    cam_pos.z = camPos.z;
+
     if (hits->id == 0)
     {
         Hit hit = hits->hit[hits->id][0];
         if (hit.isCollision == 0) { return true; }
 
-        Ray newRay1;
+        Ray newRay1; // light1
         newRay1.posx = light1.x;
         newRay1.posy = light1.y;
         newRay1.posz = light1.z;
@@ -163,7 +168,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
         newRay1.dirz = dir1.z;
         newRay1.length = 5000.0f;
 
-        Ray newRay2;
+        Ray newRay2; // light 2
         newRay2.posx = light2.x;
         newRay2.posy = light2.y;
         newRay2.posz = light2.z;
@@ -173,7 +178,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
         newRay2.dirz = dir2.z;
         newRay2.length = 5000.0f;
 
-        Ray newRay3;
+        Ray newRay3; // light3
         newRay3.posx = light3.x;
         newRay3.posy = light3.y;
         newRay3.posz = light3.z;
@@ -183,11 +188,23 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
         newRay3.dirz = dir3.z;
         newRay3.length = 5000.0f;
 
+        Ray newRay4; // reflection
+        float3 pos = hit.pos + hit.normal * 0.01;
+        newRay4.posx = pos.x;
+        newRay4.posy = pos.y;
+        newRay4.posz = pos.z;
+        float3 dir4 = reflect(normalize(hit.pos - cam_pos), hit.normal);
+        newRay4.dirx = dir4.x;
+        newRay4.diry = dir4.y;
+        newRay4.dirz = dir4.z;
+        newRay4.length = 5000.0f;
+
         rays->id = 1;
-        rays->count[rays->id] = 3;
+        rays->count[rays->id] = 4;
         rays->ray[rays->id][0] = newRay1;
         rays->ray[rays->id][1] = newRay2;
         rays->ray[rays->id][2] = newRay3;
+        rays->ray[rays->id][3] = newRay4;
 
         return false;
     }
@@ -242,15 +259,34 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
             }
         }
 
-        //diffuseIntensity /= 3.0f;
+        
 
         Color textureColor = Tex2DDiffuse(materials, textureDatas, hit1.materialId, hit1.st);
 
+        // diffuse
         Color diffuseColor;
         diffuseColor.red   = (int)(((float)textureColor.red  ) * diffuseIntensity);
         diffuseColor.green = (int)(((float)textureColor.green) * diffuseIntensity);
         diffuseColor.blue  = (int)(((float)textureColor.blue ) * diffuseIntensity);
         diffuseColor.alpha = 255;
+
+        // reflection
+        Hit hit0 = hits->hit[0][0];
+        Hit hit5 = hits->hit[hits->id][3];
+        if (hit5.isCollision == 1 && hit0.objectId == 0)
+        {
+            Color reflectionColor = Tex2DDiffuse(materials, textureDatas, hit5.materialId, hit5.st);
+
+            float reflectionIntensity = 0.5;
+            diffuseColor.red   += (int)(((float)reflectionColor.red  ) * reflectionIntensity);
+            diffuseColor.green += (int)(((float)reflectionColor.green) * reflectionIntensity);
+            diffuseColor.blue  += (int)(((float)reflectionColor.blue ) * reflectionIntensity);
+            diffuseColor.alpha = 255;
+
+            WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);
+
+            return true;
+        }
 
         WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);
 
@@ -263,7 +299,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
 
             m_Scene.CreateDevice(strDeviceName, @strVertexShader, @strRayShader);
 
-            Mutex mtxMutex = new Mutex();
+            //Mutex mtxMutex = new Mutex();
 
             Random rand = new Random();
 
@@ -272,9 +308,9 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 string strDirectory = @".\";
                 OBJLoader objLoader = new OBJLoader();
                 
-                mtxMutex.WaitOne();
+                //mtxMutex.WaitOne();
                 objLoader.LoadFromFile(@strDirectory, @"Talaj.obj");
-                mtxMutex.ReleaseMutex();
+                //mtxMutex.ReleaseMutex();
 
                 // convert to triangle list
                 //int iMatrixId = m_Scene.GenMatrix();
@@ -369,7 +405,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 
                 int iId;
                 iId = m_Scene.GenObject();
-                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateScale(10.0f,1.0f,10.0f));
+                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateScale(7.0f,3.0f,7.0f));
                 m_Scene.SetObject(iId, staticObject);
                 objLoader.Release();
                 triangles.Clear();
@@ -379,7 +415,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 smd = new SMDLoader();
                 mesh = new Mesh();
 
-                mtxMutex.WaitOne();
+                //mtxMutex.WaitOne();
 
                 // HL1
                 smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
@@ -401,7 +437,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
                 //int iMatrixId = m_Scene.GenMatrix();
                 //m_Scene.SetMatrix(iMatrixId, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
 
-                mtxMutex.ReleaseMutex();
+                //mtxMutex.ReleaseMutex();
 
                 triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (Mesh.Material material in mesh.materials)
@@ -587,7 +623,7 @@ bool RayShader(Hits *hits, Rays *rays, __global Material *materials, __global un
 
             m_fFullTime += m_fDeltaTime;
             float fSpeed = 0.5f;
-            m_Scene.SetCamera(new Vector3(-40.0f * (float)Math.Cos(m_fFullTime * fSpeed), 20, -40.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
+            m_Scene.SetCamera(new Vector3(-45.0f * (float)Math.Cos(m_fFullTime * fSpeed), 30, -45.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
             m_Scene.RunRayShader(127, 127, 255, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
