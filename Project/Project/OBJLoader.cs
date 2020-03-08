@@ -36,7 +36,6 @@ namespace Project
         public class Material
         {
             public string texture_filename;
-            //public Texture texture;
 
             public List<Vertex> indices;
 
@@ -44,23 +43,13 @@ namespace Project
             {
                 indices = new List<Vertex>();
                 this.texture_filename = texture_filename;
-                //texture = new Texture();
             }
             
             public void Release()
             {
                 indices.Clear();
                 indices = null;
-
-                //vertices.Clear();
-                //text_coords.Clear();
-                //indices2.Clear();
             }
-
-            //public List<vec3> vertices = new List<vec3>();
-            //public List<vec2> text_coords = new List<vec2>();
-            //public List<vec3> normals = new List<vec3>();
-            //public List<Int32> indices2 = new List<Int32>();
         };
 
         public List<Material> materials;
@@ -197,21 +186,6 @@ namespace Project
                         }
                 }
             }
-
-            // copy
-            //foreach (Material material in materials)
-            //{
-            //    for (int i = 0; i < material.indices.Count; i++)
-            //    {
-            //        vec3 v = vertices[material.indices[i].id_vertex];
-            //        vec2 t = text_coords[material.indices[i].id_textcoord];
-            //        vec3 n = normals[material.indices[i].id_normal];
-            //
-            //        material.vertices.Add(v);
-            //        material.text_coords.Add(t);
-            //        material.normals.Add(n);
-            //    }
-            //}
 
             return true;
         }
