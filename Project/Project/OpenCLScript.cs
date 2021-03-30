@@ -591,46 +591,19 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     return ret;
 }
 
-int Intersect_RayBBox(Ray ray, BBox bbox) 
+float Intersect_RayBBox(Ray ray, BBox bbox)
 {
-    float3 lb;
-    lb.x = bbox.minx;
-    lb.y = bbox.miny;
-    lb.z = bbox.minz;
-
-    float3 rt;
-    rt.x = bbox.maxx;
-    rt.y = bbox.maxy;
-    rt.z = bbox.maxz;
-
-    float3 dirfrac;
-    dirfrac.x = 1.0f / ray.dirx;
-    dirfrac.y = 1.0f / ray.diry;
-    dirfrac.z = 1.0f / ray.dirz;
-    
-    float t1 = (lb.x - ray.posx) * dirfrac.x;
-    float t2 = (rt.x - ray.posx) * dirfrac.x;
-    float t3 = (lb.y - ray.posy) * dirfrac.y;
-    float t4 = (rt.y - ray.posy) * dirfrac.y;
-    float t5 = (lb.z - ray.posz) * dirfrac.z;
-    float t6 = (rt.z - ray.posz) * dirfrac.z;
-    
-    float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-    float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
-    
-    // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
-    if (tmax < 0.0f)
-    {
-        return 0;
-    }
-    
-    // if tmin > tmax, ray doesn't intersect AABB
-    if (tmin > tmax)
-    {
-        return 0;
-    }
-    
-    return 1;
+    float t[10];
+    t[1] = (bbox.minx - ray.posx) / ray.dirx;
+    t[2] = (bbox.maxx - ray.posx) / ray.dirx;
+    t[3] = (bbox.miny - ray.posy) / ray.diry;
+    t[4] = (bbox.maxy - ray.posy) / ray.diry;
+    t[5] = (bbox.minz - ray.posz) / ray.dirz;
+    t[6] = (bbox.maxz - ray.posz) / ray.dirz;
+    t[7] = max(max(min(t[1], t[2]), min(t[3], t[4])), min(t[5], t[6]));
+    t[8] = min(min(max(t[1], t[2]), max(t[3], t[4])), max(t[5], t[6]));
+    t[9] = (t[8] < 0 || t[7] > t[8]) ? -1.0f : t[7];
+    return t[9];
 }
 
 void WriteTexture(__global unsigned char *texture, int width, int height, float2 pixel, Color color)
@@ -702,16 +675,16 @@ Color Tex2DDiffuse(__global Material *materials, __global unsigned char *texture
 typedef struct
 {
     int id;
-    int count[64];
-    Ray ray[6][64];
+    int count[32];
+    Ray ray[5][32];
 }
 Rays;
 
 typedef struct
 {
     int id;
-    int count[64];
-    Hit hit[6][64];
+    int count[32];
+    Hit hit[5][32];
 }
 Hits;
 
@@ -793,23 +766,48 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                         }
                     }
                     
+                    float left_distance = -1.0f;
                     if (temp_node.left != -1) 
                     {
                         BVHNode node = in_BVHNodes[temp_node.left];
-                        if (1 == Intersect_RayBBox(ray, node.bbox))
-                        {
-                            stack[top] = temp_node.left; 
-                            top++;
-                        }
+                        left_distance = Intersect_RayBBox(ray, node.bbox);
                     }
+
+                    float right_distance = -1.0f;
                     if (temp_node.right != -1) 
                     {
                         BVHNode node = in_BVHNodes[temp_node.right];
-                        if (1 == Intersect_RayBBox(ray, node.bbox))
+                        right_distance = Intersect_RayBBox(ray, node.bbox);
+                    }
+
+                    if (left_distance > -0.01f && right_distance > -0.01f)
+                    {
+                        if (left_distance < right_distance)
+                        {
+                            stack[top] = temp_node.left; 
+                            top++;
+
+                            stack[top] = temp_node.right;
+                            top++;
+                        } 
+                        else
                         {
                             stack[top] = temp_node.right;
                             top++;
+
+                            stack[top] = temp_node.left;
+                            top++;
                         }
+                    }
+                    else if (left_distance > -0.01f)
+                    {
+                        stack[top] = temp_node.left;
+                        top++;
+                    }
+                    else if (right_distance > -0.01f)
+                    {
+                        stack[top] = temp_node.right;
+                        top++;
                     }
                 }
             }
