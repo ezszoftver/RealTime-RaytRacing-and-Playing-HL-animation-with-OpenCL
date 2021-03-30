@@ -780,7 +780,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                         right_distance = Intersect_RayBBox(ray, node.bbox);
                     }
 
-                    if (left_distance > -0.01f && right_distance > -0.01f)
+                    if (left_distance >= 0.0f && right_distance >= 0.0f)
                     {
                         if (left_distance < right_distance)
                         {
@@ -799,12 +799,12 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                             top++;
                         }
                     }
-                    else if (left_distance > -0.01f)
+                    else if (left_distance >= 0.0f)
                     {
                         stack[top] = temp_node.left;
                         top++;
                     }
-                    else if (right_distance > -0.01f)
+                    else if (right_distance >= 0.0f)
                     {
                         stack[top] = temp_node.right;
                         top++;
