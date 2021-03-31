@@ -314,12 +314,12 @@ BBox GenBBox_Tri(Triangle tri)
     fMaxZ = max(fMaxZ, tri.c.vz);
     
     BBox bbox;
-    bbox.minx = fMinX;
-    bbox.miny = fMinY;
-    bbox.minz = fMinZ;
-    bbox.maxx = fMaxX;
-    bbox.maxy = fMaxY;
-    bbox.maxz = fMaxZ;
+    bbox.minx = fMinX - 0.0001f;
+    bbox.miny = fMinY - 0.0001f;
+    bbox.minz = fMinZ - 0.0001f;
+    bbox.maxx = fMaxX + 0.0001f;
+    bbox.maxy = fMaxY + 0.0001f;
+    bbox.maxz = fMaxZ + 0.0001f;
     
     return bbox;
 }
@@ -365,12 +365,12 @@ BBox GenBBox_BBoxBBox(BBox bbox1, BBox bbox2)
     fMaxZ = max(fMaxZ, bbox2.maxz);
 
     BBox bbox;
-    bbox.minx = fMinX;
-    bbox.miny = fMinY;
-    bbox.minz = fMinZ;
-    bbox.maxx = fMaxX;
-    bbox.maxy = fMaxY;
-    bbox.maxz = fMaxZ;
+    bbox.minx = fMinX - 0.0001f;
+    bbox.miny = fMinY - 0.0001f;
+    bbox.minz = fMinZ - 0.0001f;
+    bbox.maxx = fMaxX + 0.0001f;
+    bbox.maxy = fMaxY + 0.0001f;
+    bbox.maxz = fMaxZ + 0.0001f;
 
     return bbox;
 }
@@ -579,7 +579,7 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
     float area3 = length(cross(edge3, vp3)) / 2.0f;
     float w = area3 / tri.area;
 
-    if ((u + v + w) > 1.001) { return ret; }
+    if ((u + v + w) > 1.0001) { return ret; }
 
     ret.isCollision = 1;
     ret.pos = P;
@@ -762,6 +762,8 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
                             if (hit.t < hits.hit[rays.id][ray_id].t)
                             {
                                 hits.hit[rays.id][ray_id] = hit;
+                                isSearching == 0;
+                                continue;
                             }
                         }
                     }
