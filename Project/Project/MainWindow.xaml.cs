@@ -85,14 +85,12 @@ namespace Project
                 OBJLoader objLoader = new OBJLoader();
                 
                 //mtxMutex.WaitOne();
-                objLoader.LoadFromFile(@strDirectory, @"Talaj.obj");
+                objLoader.LoadFromFile(@strDirectory, @"Scene.obj");
                 //mtxMutex.ReleaseMutex();
 
                 // convert to triangle list
-                //int iMatrixId = m_Scene.GenMatrix();
-                //m_Scene.SetMatrix(iMatrixId, Matrix4.Identity);
-                int iMatrixId = 0;
-
+                int iMatrixId = m_Scene.GenMatrix();
+                m_Scene.SetMatrix(iMatrixId, Matrix4.Identity);
 
                 List<OpenCLRenderer.Triangle> triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (OBJLoader.Material material in objLoader.materials)
@@ -181,7 +179,7 @@ namespace Project
                 
                 int iId;
                 iId = m_Scene.GenObject();
-                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateScale(7.0f,3.0f,7.0f));
+                OpenCLRenderer.BVHObject staticObject = m_Scene.CreateStaticObject(triangles, Matrix4.CreateScale(7.0f,7.0f,7.0f));
                 m_Scene.SetObject(iId, staticObject);
                 objLoader.Release();
                 triangles.Clear();
@@ -190,31 +188,31 @@ namespace Project
                 strDirectory = @".\";
                 smd = new SMDLoader();
                 mesh = new Mesh();
-
+                
                 //mtxMutex.WaitOne();
-
+                
                 // HL1
                 smd.LoadReference(@strDirectory, @"Goblin_Reference.smd", mesh);
                 smd.AddAnimation(@strDirectory, @"Goblin_Anim.smd", "Anim1", 30.0f);
-
+                
                 // HL2
                 //smd.LoadReference(@strDirectory, @"Antlion_guard_reference.smd", mesh);
                 //smd.AddAnimation(@strDirectory, @"Antlion_idle.smd", "Anim1", 30.0f);
-
+                
                 smd.SetAnimation("Anim1");
-
+                
                 iMatrixOffset = m_Scene.NumMatrices();
                 for (int i = 0; i < mesh.transforms.Count; i++)
                 {
                     iMatrixId = m_Scene.GenMatrix();
-                    m_Scene.SetMatrix(iMatrixId, smd.GetMatrix(i) * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+                    m_Scene.SetMatrix(iMatrixId, smd.GetMatrix(i) * Matrix4.CreateScale(0.75f) * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(0) * Matrix4.CreateTranslation(10, 0, -50));
                 }
-
+                
                 //int iMatrixId = m_Scene.GenMatrix();
                 //m_Scene.SetMatrix(iMatrixId, Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
-
+                
                 //mtxMutex.ReleaseMutex();
-
+                
                 triangles = new List<OpenCLRenderer.Triangle>();
                 foreach (Mesh.Material material in mesh.materials)
                 {
@@ -224,27 +222,27 @@ namespace Project
                     
                     int iMaterialId = m_Scene.GenMaterial();
                     m_Scene.SetMaterial(iMaterialId, @strDiffuseTextureName, @strSpecularTextureName, @strNormalTextureName);
-
+                
                     for (int i = 0; i < material.vertices.Count(); i += 3)
                     {
                         // add triangle
                         Mesh.Vertex meshVertexA = material.vertices[i + 0];
                         Mesh.Vertex meshVertexB = material.vertices[i + 1];
                         Mesh.Vertex meshVertexC = material.vertices[i + 2];
-
+                
                         Vector3 vA = meshVertexA.vertex;
                         Vector3 vB = meshVertexB.vertex;
                         Vector3 vC = meshVertexC.vertex;
-
+                
                         // none normal vector
                         Vector3 nA = meshVertexA.normal;
                         Vector3 nB = meshVertexB.normal;
                         Vector3 nC = meshVertexC.normal;
-
+                
                         Vector2 tA = meshVertexA.textcoords;
                         Vector2 tB = meshVertexB.textcoords;
                         Vector2 tC = meshVertexC.textcoords;
-
+                
                         OpenCLRenderer.Vertex vertexA = new OpenCLRenderer.Vertex();
                         vertexA.m_Vx = vA.X;
                         vertexA.m_Vy = vA.Y;
@@ -273,7 +271,7 @@ namespace Project
                                 vertexA.m_fWeight3 = meshVertexA.matrices[j].weight;
                             }
                         }
-
+                
                         OpenCLRenderer.Vertex vertexB = new OpenCLRenderer.Vertex();
                         vertexB.m_Vx = vB.X;
                         vertexB.m_Vy = vB.Y;
@@ -302,7 +300,7 @@ namespace Project
                                 vertexB.m_fWeight3 = meshVertexB.matrices[j].weight;
                             }
                         }
-
+                
                         OpenCLRenderer.Vertex vertexC = new OpenCLRenderer.Vertex();
                         vertexC.m_Vx = vC.X;
                         vertexC.m_Vy = vC.Y;
@@ -331,7 +329,7 @@ namespace Project
                                 vertexC.m_fWeight3 = meshVertexC.matrices[j].weight;
                             }
                         }
-
+                
                         OpenCLRenderer.Triangle newTriangle = new OpenCLRenderer.Triangle();
                         newTriangle.m_A = vertexA;
                         newTriangle.m_B = vertexB;
@@ -341,7 +339,7 @@ namespace Project
                         triangles.Add(newTriangle);
                     }
                 }
-
+                
                 //int iId;
                 iId = m_Scene.GenObject();
                 OpenCLRenderer.BVHObject dynamicObject = m_Scene.CreateDynamicObject(triangles);
@@ -390,7 +388,7 @@ namespace Project
             smd.SetTime(time, mesh);
             for (int i = 0; i < mesh.transforms.Count; i++)
             {
-                m_Scene.SetMatrix(iMatrixOffset + i, mesh.transforms[i] * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(3.14f));
+                m_Scene.SetMatrix(iMatrixOffset + i, mesh.transforms[i] * Matrix4.CreateScale(0.75f) * Matrix4.CreateRotationX(-1.57f) * Matrix4.CreateRotationY(0) * Matrix4.CreateTranslation(10, 0, -50));
             }
 
             m_Scene.UpdateMatrices();
@@ -398,9 +396,9 @@ namespace Project
             m_Scene.RunRefitTreeShader();
 
             m_fFullTime += m_fDeltaTime;
-            float fSpeed = 0.5f;
-            m_Scene.SetCamera(new Vector3(-45.0f * (float)Math.Cos(m_fFullTime * fSpeed), 30, -45.0f * (float)Math.Sin(m_fFullTime * fSpeed)), new Vector3(0, 5, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
-            m_Scene.RunRayShader(127, 127, 255, 255);
+            float fSpeed = 0.15f;
+            m_Scene.SetCamera(new Vector3(-130.0f * (float)Math.Sin(m_fFullTime * fSpeed), 45, -130.0f * (float)Math.Cos(m_fFullTime * fSpeed)), new Vector3(0, 0, 0), new Vector3(0, 1, 0), (float)Math.PI / 4.0f, 1000.0f);
+            m_Scene.RunRayShader(100, 150, 240, 255);
 
             image.Source = m_Scene.GetWriteableBitmap();
         }
