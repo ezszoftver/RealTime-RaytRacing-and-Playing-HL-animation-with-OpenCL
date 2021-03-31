@@ -593,6 +593,11 @@ Hit Intersect_RayTriangle(Ray ray, Triangle tri)
 
 float Intersect_RayBBox(Ray ray, BBox bbox)
 {
+    if ((ray.posx > bbox.minx && ray.posy > bbox.miny && ray.posz > bbox.minz) && (ray.posx < bbox.maxx && ray.posy < bbox.maxy && ray.posz < bbox.maxz))
+    {
+        return 0.0f;
+    }
+
     float t[10];
     t[1] = (bbox.minx - ray.posx) / ray.dirx;
     t[2] = (bbox.maxx - ray.posx) / ray.dirx;
