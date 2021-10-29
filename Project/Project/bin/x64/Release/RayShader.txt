@@ -1,0 +1,70 @@
+bool RayShader(Hits *hits, Rays *rays, Vector3 camPos, Vector3 camAt, __global Material *materials, __global unsigned char *textureDatas, __global unsigned char *out, int in_Width, int in_Height, int pixelx, int pixely)
+{
+    float3 light1;
+    light1.x = 320.0f;
+    light1.y = 850.0f;
+    light1.z = -390.0f;
+    
+    float3 cam_pos;
+    cam_pos.x = camPos.x;
+    cam_pos.y = camPos.y;
+    cam_pos.z = camPos.z;
+
+    if (hits->id == 0)
+    {
+        Hit hit = hits->hit[hits->id][0];
+        if (hit.isCollision == 0) { return true; }
+
+		Ray newRay1; // light1
+        newRay1.posx = light1.x;
+        newRay1.posy = light1.y;
+        newRay1.posz = light1.z;
+        float3 dir1 = normalize(hit.pos - light1);
+        newRay1.dirx = dir1.x;
+        newRay1.diry = dir1.y;
+        newRay1.dirz = dir1.z;
+        newRay1.length = 5000.0f;
+		
+		rays->id = 1;
+        rays->count[rays->id] = 1;
+        rays->ray[rays->id][0] = newRay1;
+		
+		return false;
+    }
+
+	if (hits->id == 1)
+    {
+        Hit hit1 = hits->hit[0][0];
+        if (hit1.isCollision == 0) { return true; }
+		
+		float diffuseIntensity = 0.5f;
+
+        Hit hit2 = hits->hit[hits->id][0];
+        if (hit2.isCollision == 1)
+        {
+            float length2 = length(light1 - hit2.pos);
+            float length1 = length(light1 - hit1.pos);
+            
+            if ((length2 + 0.005f) > length1)
+            {
+                float3 dir = normalize(hit1.pos - light1);
+                diffuseIntensity += max(dot(-dir, hit2.normal), 0.0f);
+            }
+        }
+		
+		Color textureColor = Tex2DDiffuse(materials, textureDatas, hit1.materialId, hit1.st);
+
+        // diffuse
+        Color diffuseColor;
+        diffuseColor.red   = (int)(((float)textureColor.red  ) * diffuseIntensity * 1.5f);
+        diffuseColor.green = (int)(((float)textureColor.green) * diffuseIntensity * 1.5f);
+        diffuseColor.blue  = (int)(((float)textureColor.blue ) * diffuseIntensity * 1.5f);
+        diffuseColor.alpha = 255;
+
+		WriteTexture(out, in_Width, in_Height, ToFloat2(pixelx, pixely), diffuseColor);
+		
+		return true;
+	}
+
+    return true;
+}
