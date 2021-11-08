@@ -789,7 +789,7 @@ __kernel void Main_RayShader(__global Ray *in_Rays, __global BVHNode *in_BVHNode
 
                     if (left_distance >= 0.0f && right_distance >= 0.0f)
                     {
-                        if (left_distance < right_distance)
+                        if (left_distance > right_distance)
                         {
                             stack[top] = temp_node.left; 
                             top++;
